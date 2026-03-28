@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: Round-Robin Model Distribution — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="AgentCreation.html">Agent Creation</a>
+<a href="AgentSwitching.html">Agent Switching</a>
+<a href="BrowserControl.html">Browser Control</a>
+<a href="CustomSkills.html">Custom Skills</a>
+<a href="HookSystem.html">Hook System</a>
+<a href="JSONAgents.html">JSONAgents</a>
+<a href="MCPManagement.html">MCPManagement</a>
+<a href="MPCCatalog.html">MPCCatalog</a>
+<a href="ModelConfiguration.html">Model Configuration</a>
+<a href="ModelDiscovery.html">Model Discovery</a>
+<a href="PluginDevelopment.html">Plugin Development</a>
+<a href="PythonAgents.html">Python Agents</a>
+<a href="RoundRobinModels.html" class="active">Round Robin Models</a>
+<a href="SkillInstallation.html">Skill Installation</a>
+<a href="SkillUsage.html">Skill Usage</a>
+<a href="TaskScheduling.html">Task Scheduling</a>
+<a href="TerminalIntegration.html">Terminal Integration</a>
+<a href="UniversalConstructor.html">Universal Constructor</a>
+<a href="index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-round-robin-model-distribution">Feature: Round-Robin Model Distribution</h1>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Round-robin model distribution allows Code Puppy to automatically cycle through multiple AI models when processing requests, distributing the load across different models to overcome rate limits and improve reliability.</p>
+<h2 id="why-does-this-exist">Why Does This Exist?</h2>
+<ul>
+<li><strong>Rate Limit Mitigation</strong>: When a single model hits API rate limits, requests can be distributed across multiple models</li>
+<li><strong>Load Balancing</strong>: Spreads computational load across different model instances</li>
+<li><strong>Cost Distribution</strong>: Can mix different pricing tiers (e.g., cheaper models for simple tasks, expensive for complex)</li>
+<li><strong>Redundancy</strong>: If one model is temporarily unavailable, others can still serve requests</li>
+</ul>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<p>Users configure a "round_robin" model in their configuration file, specifying multiple candidate models. When Code Puppy uses this model, it automatically cycles through them in sequence.</p>
+<h3 id="system-perspective">System Perspective</h3>
+<p>The <code>RoundRobinModel</code> class wraps multiple model instances and maintains a request counter. After every <code>rotate_every</code> requests, it advances to the next model in the list.</p>
+<pre class="mermaid">
+flowchart TD
+    A[Request to round_robin model] --&gt; B{Request count &gt;= rotate_every?}
+    B --&gt;|No| C[Use current model]
+    B --&gt;|Yes| D[Advance to next model]
+    D --&gt; E[Reset counter]
+    C --&gt; F[Send request]
+    E --&gt; F
+    F --&gt; G[Return response]
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Responsibility</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Core class</td>
+<td><code>code_puppy/round_robin_model.py</code></td>
+<td><code>RoundRobinModel</code> class</td>
+</tr>
+<tr>
+<td>Factory integration</td>
+<td><code>code_puppy/model_factory.py</code></td>
+<td>Lines 803-822</td>
+</tr>
+<tr>
+<td>Configuration</td>
+<td><code>models.json</code> or user config</td>
+<td>Model type: <code>"round_robin"</code></td>
+</tr>
+</tbody></table>
+<h2 id="configuration">Configuration</h2>
+<h3 id="basic-round-robin">Basic Round-Robin</h3>
+<pre><code class="language-json">{
+  "name": "my_round_robin",
+  "model_type": "round_robin",
+  "models": ["model_a", "model_b", "model_c"]
+}</code></pre>
+<h3 id="with-rotation-control">With Rotation Control</h3>
+<pre><code class="language-json">{
+  "name": "balanced_rr",
+  "model_type": "round_robin",
+  "models": ["claude-3.5", "gpt-4o"],
+  "rotate_every": 2
+}</code></pre>
+<table>
+<thead><tr>
+<th>Setting</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>models</code></td>
+<td>List of model names to cycle through</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><code>rotate_every</code></td>
+<td>Number of requests before rotating to next model</td>
+<td><code>1</code></td>
+</tr>
+</tbody></table>
+<h2 id="rotation-behavior">Rotation Behavior</h2>
+<h3 id="default-rotate-every-1">Default (rotate_every: 1)</h3>
+<pre><code>Request 1 → Model A
+Request 2 → Model B
+Request 3 → Model C
+Request 4 → Model A (wraps around)</code></pre>
+<h3 id="custom-rotate-every-3">Custom (rotate_every: 3)</h3>
+<pre><code>Request 1 → Model A
+Request 2 → Model A
+Request 3 → Model A
+Request 4 → Model B
+Request 5 → Model B
+Request 6 → Model B
+Request 7 → Model C</code></pre>
+<h2 id="thread-safety">Thread Safety</h2>
+<p>The implementation uses a <code>threading.Lock</code> to ensure thread-safe rotation when multiple requests are processed concurrently.</p>
+<h2 id="error-handling">Error Handling</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p>Unlike fallback models, round-robin does <strong>not</strong> retry with other models on error. If the selected model fails, the error is propagated to the caller.</p>
+</div>
+<h2 id="model-name-display">Model Name Display</h2>
+<p>The round-robin model displays a composite name showing all candidates:</p>
+<pre><code>round_robin:model_a,model_b,model_c</code></pre>
+<p>With custom rotation:</p>
+<pre><code>round_robin:model_a,model_b:rotate_every=3</code></pre>
+<h2 id="testing-this-feature">Testing This Feature</h2>
+<ol>
+<li>Configure a round-robin model in your config</li>
+<li>Run multiple tasks sequentially</li>
+<li>Observe which model is used for each request (check logs or model_name property)</li>
+</ol>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="ModelDiscovery.html">Feature: Model Discovery</a></li>
+<li><a href="ModelConfiguration.html">Feature: Model Configuration</a></li>
+<li><a href="../Guides/RoundRobinModels.html">Guide: Round-Robin Models</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

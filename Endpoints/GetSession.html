@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Endpoint: GET /api/sessions/{id} — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="CommandAutocomplete.html">Command Autocomplete</a>
+<a href="DeleteConfigKey.html">Delete Config Key</a>
+<a href="DeleteSession.html">Delete Session</a>
+<a href="ExecuteCommand.html">Execute Command</a>
+<a href="GetCommand.html">Get Command</a>
+<a href="GetConfig.html">Get Config</a>
+<a href="GetConfigKey.html">Get Config Key</a>
+<a href="GetSession.html" class="active">Get Session</a>
+<a href="GetSessionMessages.html">Get Session Messages</a>
+<a href="ListAgents.html">List Agents</a>
+<a href="ListCommands.html">List Commands</a>
+<a href="ListConfigKeys.html">List Config Keys</a>
+<a href="ListSessions.html">List Sessions</a>
+<a href="SetConfigKey.html">Set Config Key</a>
+<a href="index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="endpoint-get-api-sessions-id">Endpoint: GET /api/sessions/{id}</h1>
+<h2 id="overview">Overview</h2>
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Method</td>
+<td><code>GET</code></td>
+</tr>
+<tr>
+<td>Path</td>
+<td><code>/api/sessions/{id}</code></td>
+</tr>
+<tr>
+<td>Auth</td>
+<td><code>public</code></td>
+</tr>
+<tr>
+<td>Rate Limit</td>
+<td><code>N/A</code></td>
+</tr>
+</tbody></table>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Retrieves metadata for a specific subagent session by its ID. Returns the same information as the list endpoint but for a single session, including creation time, agent name, and message count.</p>
+<h2 id="request">Request</h2>
+<h3 id="headers">Headers</h3>
+<table>
+<thead><tr>
+<th>Header</th>
+<th>Required</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>No specific headers required</td>
+<td>-</td>
+<td>-</td>
+</tr>
+</tbody></table>
+<h3 id="path-parameters">Path Parameters</h3>
+<table>
+<thead><tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>string</td>
+<td>The session identifier (matches filename without <code>.txt</code> extension)</td>
+</tr>
+</tbody></table>
+<h3 id="query-parameters">Query Parameters</h3>
+<p>None</p>
+<h3 id="request-body">Request Body</h3>
+<p>None</p>
+<h2 id="response">Response</h2>
+<h3 id="success-response-200-ok">Success Response (200 OK)</h3>
+<pre><code class="language-json">{
+  "session_id": "abc123def456",
+  "agent_name": "planning",
+  "initial_prompt": "You are a planning agent...",
+  "created_at": "2024-01-15T10:30:00Z",
+  "last_updated": "2024-01-15T10:35:00Z",
+  "message_count": 15
+}</code></pre>
+<h3 id="response-fields">Response Fields</h3>
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>session_id</code></td>
+<td>string</td>
+<td>The session identifier</td>
+</tr>
+<tr>
+<td><code>agent_name</code></td>
+<td>string \</td>
+<td>null</td>
+<td>Name of the agent that created this session</td>
+</tr>
+<tr>
+<td><code>initial_prompt</code></td>
+<td>string \</td>
+<td>null</td>
+<td>The initial system prompt used</td>
+</tr>
+<tr>
+<td><code>created_at</code></td>
+<td>string \</td>
+<td>null</td>
+<td>ISO timestamp of session creation</td>
+</tr>
+<tr>
+<td><code>last_updated</code></td>
+<td>string \</td>
+<td>null</td>
+<td>ISO timestamp of last update</td>
+</tr>
+<tr>
+<td><code>message_count</code></td>
+<td>number</td>
+<td>Total messages in session</td>
+</tr>
+</tbody></table>
+<h3 id="error-responses">Error Responses</h3>
+<table>
+<thead><tr>
+<th>Status</th>
+<th>Code</th>
+<th>When</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>404</td>
+<td><code>NOT_FOUND</code></td>
+<td>Session file does not exist</td>
+</tr>
+<tr>
+<td>504</td>
+<td><code>TIMEOUT</code></td>
+<td>File read operation exceeds 10-second timeout</td>
+</tr>
+</tbody></table>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Layer</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Route definition</td>
+<td><code>code_puppy/api/routers/sessions.py</code></td>
+<td>Line 127</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>code_puppy/api/routers/sessions.py</code></td>
+<td><code>get_session()</code> function</td>
+</tr>
+<tr>
+<td>Data access</td>
+<td><code>code_puppy/api/routers/sessions.py</code></td>
+<td>Reads single <code>.txt</code> metadata file</td>
+</tr>
+</tbody></table>
+<h2 id="flow">Flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant Client
+    participant Router
+    participant Handler
+    participant FS
+    
+    Client-&gt;&gt;Router: GET /api/sessions/{id}
+    Router-&gt;&gt;Handler: get_session(session_id)
+    Handler-&gt;&gt;FS: Check {id}.txt exists
+    alt File not found
+        FS--&gt;&gt;Handler: File not found
+        Handler--&gt;&gt;Client: 404 Not Found
+    else File exists
+        Handler-&gt;&gt;FS: Read metadata JSON
+        alt Timeout
+            FS--xHandler: Timeout after 10s
+            Handler--&gt;&gt;Client: 504 Gateway Timeout
+        else Success
+            FS--&gt;&gt;Handler: Metadata JSON
+            Handler--&gt;&gt;Client: SessionInfo
+        end
+    end
+</pre>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Session vs Messages</strong>: This endpoint only returns metadata. To get the actual message content, use <a href="GetSessionMessages.html">GET /api/sessions/{id}/messages</a>.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>File format</strong>: The session metadata is stored as JSON in a <code>.txt</code> file (historical naming choice). The actual messages are in a separate <code>.pkl</code> (pickle) file.</p>
+</div>
+<div class="callout callout-tip">
+<div class="callout-title">TIP</div>
+<p><strong>Timeout behavior</strong>: Unlike the list endpoint which includes partial data on timeout, this endpoint returns a 504 error if the file read times out.</p>
+</div>
+<h2 id="examples">Examples</h2>
+<h3 id="example-request">Example Request</h3>
+<pre><code class="language-bash">curl http://localhost:8000/api/sessions/abc123def456</code></pre>
+<h3 id="example-response">Example Response</h3>
+<pre><code class="language-json">{
+  "session_id": "abc123def456",
+  "agent_name": "planning",
+  "initial_prompt": "You are a planning agent that breaks down tasks...",
+  "created_at": "2024-01-15T10:30:00Z",
+  "last_updated": "2024-01-15T10:35:00Z",
+  "message_count": 15
+}</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="ListSessions.html">Endpoint: GET /api/sessions</a></li>
+<li><a href="GetSessionMessages.html">Endpoint: GET /api/sessions/{id}/messages</a></li>
+<li><a href="DeleteSession.html">Endpoint: DELETE /api/sessions/{id}</a></li>
+<li><a href="../Flows/AgentExecution.html">Flow: Agent Execution</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

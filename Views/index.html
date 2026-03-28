@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Views Index — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="AgentPicker.html">Agent Picker</a>
+<a href="DiffMenu.html">Diff Menu</a>
+<a href="MCPManager.html">MCPManager</a>
+<a href="MainCLI.html">Main CLI</a>
+<a href="ModelPicker.html">Model Picker</a>
+<a href="ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="OnboardingWizard.html">Onboarding Wizard</a>
+<a href="SkillsMenu.html">Skills Menu</a>
+<a href="TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="index.html" class="active">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="views-index">Views Index</h1>
+<h2 id="overview">Overview</h2>
+<p>Views describe the <strong>user interface components</strong> - menus, dialogs, and pages that users interact with in the terminal and web interfaces.</p>
+<h2 id="terminal-ui">Terminal UI</h2>
+<h3 id="main-cli-views-maincli"><a href="MainCLI.html">Main CLI</a></h3>
+<p>Primary command-line interface</p>
+<h3 id="agent-picker-views-agentpicker"><a href="AgentPicker.html">Agent Picker</a></h3>
+<p>Agent selection menu</p>
+<h3 id="model-picker-views-modelpicker"><a href="ModelPicker.html">Model Picker</a></h3>
+<p>Model selection menu</p>
+<h3 id="mcp-manager-views-mcpmanager"><a href="MCPManager.html">MCP Manager</a></h3>
+<p>MCP server management interface</p>
+<h3 id="skills-menu-views-skillsmenu"><a href="SkillsMenu.html">Skills Menu</a></h3>
+<p>Skills installation and management</p>
+<h2 id="web-ui">Web UI</h2>
+<h3 id="terminal-web-interface-views-terminalweb"><a href="Views/TerminalWeb.html">Terminal Web Interface</a></h3>
+<p>Browser-based terminal access</p>
+<h2 id="menus-dialogs">Menus &amp; Dialogs</h2>
+<h3 id="onboarding-wizard-views-onboardingwizard"><a href="OnboardingWizard.html">Onboarding Wizard</a></h3>
+<p>First-time user setup wizard</p>
+<h3 id="model-settings-menu-views-modelsettingsmenu"><a href="ModelSettingsMenu.html">Model Settings Menu</a></h3>
+<p>Model configuration interface</p>
+<h3 id="diff-menu-views-diffmenu"><a href="DiffMenu.html">Diff Menu</a></h3>
+<p>File diff viewing and editing</p>
+<h2 id="navigation">Navigation</h2>
+<ul>
+<li><a href="../Features/index.html">Features</a> - What the system does</li>
+<li><a href="../Flows/index.html">Flows</a> - How things work</li>
+<li><a href="../Concepts/index.html">Concepts</a> - Underlying patterns</li>
+<li><a href="../Endpoints/index.html">Endpoints</a> - REST API reference</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

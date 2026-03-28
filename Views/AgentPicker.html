@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>View: Agent Picker — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="AgentPicker.html" class="active">Agent Picker</a>
+<a href="DiffMenu.html">Diff Menu</a>
+<a href="MCPManager.html">MCPManager</a>
+<a href="MainCLI.html">Main CLI</a>
+<a href="ModelPicker.html">Model Picker</a>
+<a href="ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="OnboardingWizard.html">Onboarding Wizard</a>
+<a href="SkillsMenu.html">Skills Menu</a>
+<a href="TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="view-agent-picker">View: Agent Picker</h1>
+<h2 id="overview">Overview</h2>
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Route</td>
+<td><code>/agent</code> (slash command)</td>
+</tr>
+<tr>
+<td>Auth Required</td>
+<td>N/A (local CLI)</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Split-panel (35% / 65%)</td>
+</tr>
+</tbody></table>
+<h2 id="what-does-this-view-do">What Does This View Do?</h2>
+<p>The Agent Picker is an interactive terminal UI that allows users to browse, select, and manage AI agents. It provides a split-panel interface showing the agent list on the left and detailed preview information on the right. Users can switch agents, pin models, clone agents, and delete clones.</p>
+<h2 id="screenshot-wireframe">Screenshot/Wireframe</h2>
+<pre><code>┌────────────────────────────┬──────────────────────────────────────────────┐
+│ Agents (Page 1/3)          │  AGENT DETAILS                               │
+│                            │                                              │
+│   agent-code-puppy         │  Name: code-puppy                            │
+│   agent-planning           │  Display Name: Code Puppy                    │
+│ ▶ agent-python-programmer → gpt-5 ← current │  Pinned Model: gpt-5         │
+│   agent-qa-kitten          │                                              │
+│   agent-security-auditor   │  Description:                                │
+│                            │  The main Code Puppy agent for general       │
+│                            │  coding tasks, code generation, and          │
+│                            │  project assistance.                         │
+│                            │                                              │
+│                            │    Status: ✓ Currently Active                │
+│                            │                                              │
+│  ↑↓ Navigate               │                                              │
+│  ←→ Page                   │                                              │
+│  Enter  Select             │                                              │
+│  P Pin model               │                                              │
+│  C Clone                   │                                              │
+│  D Delete clone            │                                              │
+│  Ctrl+C Cancel             │                                              │
+└────────────────────────────┴──────────────────────────────────────────────┘</code></pre>
+<h2 id="user-actions">User Actions</h2>
+<table>
+<thead><tr>
+<th>Action</th>
+<th>Trigger</th>
+<th>Result</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Navigate up</td>
+<td>↑</td>
+<td>Move selection up</td>
+</tr>
+<tr>
+<td>Navigate down</td>
+<td>↓</td>
+<td>Move selection down</td>
+</tr>
+<tr>
+<td>Previous page</td>
+<td>←</td>
+<td>Jump to previous page</td>
+</tr>
+<tr>
+<td>Next page</td>
+<td>→</td>
+<td>Jump to next page</td>
+</tr>
+<tr>
+<td>Select agent</td>
+<td>Enter</td>
+<td>Switch to selected agent</td>
+</tr>
+<tr>
+<td>Pin model</td>
+<td>P</td>
+<td>Open model picker for selected agent</td>
+</tr>
+<tr>
+<td>Clone agent</td>
+<td>C</td>
+<td>Create a clone of selected agent</td>
+</tr>
+<tr>
+<td>Delete clone</td>
+<td>D</td>
+<td>Delete selected cloned agent</td>
+</tr>
+<tr>
+<td>Cancel</td>
+<td>Ctrl+C</td>
+<td>Exit without changes</td>
+</tr>
+</tbody></table>
+<h2 id="page-structure">Page Structure</h2>
+<pre class="mermaid">
+flowchart TD
+    subgraph LeftPanel["Left Panel (35%)"]
+        Menu[Agent List]
+        Pagination["Page X/Y"]
+        NavHints["Navigation Hints"]
+    end
+    
+    subgraph RightPanel["Right Panel (65%)"]
+        Header["AGENT DETAILS"]
+        Name["Name: ..."]
+        DisplayName["Display Name: ..."]
+        PinnedModel["Pinned Model: ..."]
+        Description["Description: ..."]
+        Status["Status: ..."]
+    end
+    
+    LeftPanel --&gt; RightPanel
+</pre>
+<h2 id="components-used">Components Used</h2>
+<table>
+<thead><tr>
+<th>Component</th>
+<th>Purpose</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>FormattedTextControl</code></td>
+<td>Styled text rendering</td>
+<td><code>prompt_toolkit.layout.controls</code></td>
+</tr>
+<tr>
+<td><code>VSplit</code></td>
+<td>Split-panel layout</td>
+<td><code>prompt_toolkit.layout</code></td>
+</tr>
+<tr>
+<td><code>Frame</code></td>
+<td>Panel borders/titles</td>
+<td><code>prompt_toolkit.widgets</code></td>
+</tr>
+<tr>
+<td><code>KeyBindings</code></td>
+<td>Keyboard handling</td>
+<td><code>prompt_toolkit.key_binding</code></td>
+</tr>
+<tr>
+<td><code>arrow_select_async</code></td>
+<td>Model picker</td>
+<td><code>tools.common</code></td>
+</tr>
+</tbody></table>
+<h2 id="state-management">State Management</h2>
+<table>
+<thead><tr>
+<th>State</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>selected_idx</code></td>
+<td>int</td>
+<td>Currently selected agent (global index)</td>
+</tr>
+<tr>
+<td><code>current_page</code></td>
+<td>int</td>
+<td>Current page number</td>
+</tr>
+<tr>
+<td><code>entries</code></td>
+<td>list</td>
+<td>All available agents</td>
+</tr>
+<tr>
+<td><code>pending_action</code></td>
+<td>str</td>
+<td>Pending action (pin/clone/delete)</td>
+</tr>
+<tr>
+<td><code>result</code></td>
+<td>str</td>
+<td>Selected agent name (return value)</td>
+</tr>
+</tbody></table>
+<h2 id="agent-data-flow">Agent Data Flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant Picker
+    participant AgentMgr
+    participant Config
+    
+    User-&gt;&gt;Picker: Open agent picker
+    Picker-&gt;&gt;AgentMgr: Get available agents
+    AgentMgr--&gt;&gt;Picker: Agent list
+    Picker-&gt;&gt;User: Display list + preview
+    User-&gt;&gt;Picker: Select agent
+    alt Pin model
+        Picker-&gt;&gt;User: Show model picker
+        User-&gt;&gt;Picker: Select model
+        Picker-&gt;&gt;Config: Save pinned model
+        Picker-&gt;&gt;AgentMgr: Reload agent
+    else Clone agent
+        Picker-&gt;&gt;AgentMgr: Clone agent
+        AgentMgr--&gt;&gt;Picker: New agent name
+        Picker-&gt;&gt;User: Refresh list
+    else Delete clone
+        User-&gt;&gt;Picker: Confirm delete
+        Picker-&gt;&gt;AgentMgr: Delete agent
+        AgentMgr--&gt;&gt;Picker: Success
+        Picker-&gt;&gt;User: Refresh list
+    else Switch agent
+        Picker-&gt;&gt;AgentMgr: Switch to agent
+        AgentMgr--&gt;&gt;Picker: Success
+        Picker--&gt;&gt;User: Return agent name
+    end
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Aspect</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Entry point</td>
+<td><code>code_puppy/command_line/agent_menu.py</code></td>
+<td><code>interactive_agent_picker()</code></td>
+</tr>
+<tr>
+<td>Agent listing</td>
+<td><code>code_puppy/agents/__init__.py</code></td>
+<td><code>get_available_agents()</code></td>
+</tr>
+<tr>
+<td>Agent details</td>
+<td><code>code_puppy/agents/__init__.py</code></td>
+<td><code>get_agent_descriptions()</code></td>
+</tr>
+<tr>
+<td>Model pinning</td>
+<td><code>code_puppy/command_line/agent_menu.py</code></td>
+<td><code>_select_pinned_model()</code></td>
+</tr>
+<tr>
+<td>Agent cloning</td>
+<td><code>code_puppy/agents/__init__.py</code></td>
+<td><code>clone_agent()</code></td>
+</tr>
+<tr>
+<td>Agent deletion</td>
+<td><code>code_puppy/agents/__init__.py</code></td>
+<td><code>delete_clone_agent()</code></td>
+</tr>
+</tbody></table>
+<h2 id="keyboard-shortcuts">Keyboard Shortcuts</h2>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Action</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>↑</td>
+<td>Move selection up</td>
+</tr>
+<tr>
+<td>↓</td>
+<td>Move selection down</td>
+</tr>
+<tr>
+<td>←</td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td>→</td>
+<td>Next page</td>
+</tr>
+<tr>
+<td>Enter</td>
+<td>Select agent</td>
+</tr>
+<tr>
+<td>P</td>
+<td>Pin model</td>
+</tr>
+<tr>
+<td>C</td>
+<td>Clone agent</td>
+</tr>
+<tr>
+<td>D</td>
+<td>Delete clone</td>
+</tr>
+<tr>
+<td>Ctrl+C</td>
+<td>Cancel</td>
+</tr>
+</tbody></table>
+<h2 id="url-parameters-query-strings">URL Parameters &amp; Query Strings</h2>
+<p>N/A (terminal UI, not web)</p>
+<h2 id="loading-error-states">Loading &amp; Error States</h2>
+<table>
+<thead><tr>
+<th>State</th>
+<th>Display</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>No agents</td>
+<td>"No agents found."</td>
+</tr>
+<tr>
+<td>No selection</td>
+<td>"No agent selected."</td>
+</tr>
+<tr>
+<td>Not a clone</td>
+<td>"Only cloned agents can be deleted."</td>
+</tr>
+<tr>
+<td>Active agent</td>
+<td>Cannot delete active agent</td>
+</tr>
+</tbody></table>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Cannot delete built-in agents</strong>: Only cloned agents can be deleted. Attempting to delete a built-in agent shows a warning.</p>
+</div>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Cannot delete active agent</strong>: The currently active agent cannot be deleted. Must switch to a different agent first.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Pagination</strong>: Agents are paginated with 10 per page. Use ← → to navigate pages.</p>
+</div>
+<div class="callout callout-tip">
+<div class="callout-title">TIP</div>
+<p><strong>Model pinning</strong>: Pinned models persist across sessions. Use P to pin a specific model to an agent.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Terminal buffer</strong>: The picker uses an alternate screen buffer. If interrupted, the terminal may need resetting.</p>
+</div>
+<h2 id="text-sanitization">Text Sanitization</h2>
+<p>The picker sanitizes all display text to avoid terminal rendering issues:</p>
+<ul>
+<li>Emojis and special symbols are stripped</li>
+<li>Wide characters are removed</li>
+<li>Only safe Unicode categories are kept (letters, numbers, basic punctuation)</li>
+</ul>
+<p>This prevents display corruption in various terminal emulators.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="ModelPicker.html">View: Model Picker</a></li>
+<li><a href="../Features/AgentSwitching.html">Feature: Agent Switching</a></li>
+<li><a href="../Features/AgentCreation.html">Feature: Agent Creation</a></li>
+<li><a href="../Concepts/AgentArchitecture.html">Concept: Agent Architecture</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

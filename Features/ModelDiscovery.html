@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: Model Discovery — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="AgentCreation.html">Agent Creation</a>
+<a href="AgentSwitching.html">Agent Switching</a>
+<a href="BrowserControl.html">Browser Control</a>
+<a href="CustomSkills.html">Custom Skills</a>
+<a href="HookSystem.html">Hook System</a>
+<a href="JSONAgents.html">JSONAgents</a>
+<a href="MCPManagement.html">MCPManagement</a>
+<a href="MPCCatalog.html">MPCCatalog</a>
+<a href="ModelConfiguration.html">Model Configuration</a>
+<a href="ModelDiscovery.html" class="active">Model Discovery</a>
+<a href="PluginDevelopment.html">Plugin Development</a>
+<a href="PythonAgents.html">Python Agents</a>
+<a href="RoundRobinModels.html">Round Robin Models</a>
+<a href="SkillInstallation.html">Skill Installation</a>
+<a href="SkillUsage.html">Skill Usage</a>
+<a href="TaskScheduling.html">Task Scheduling</a>
+<a href="TerminalIntegration.html">Terminal Integration</a>
+<a href="UniversalConstructor.html">Universal Constructor</a>
+<a href="index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-model-discovery">Feature: Model Discovery</h1>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Model Discovery allows users to browse, search, and add AI models from a comprehensive database of hundreds of models across dozens of providers - all directly from the terminal UI. It fetches live data from models.dev API (with bundled fallback) and provides an interactive interface to add models to your configuration.</p>
+<h2 id="why-does-this-exist">Why Does This Exist?</h2>
+<p>Maintaining a list of available AI models manually is tedious. Code Puppy provides:</p>
+<ul>
+<li><strong>Centralized database</strong>: Access to models.dev's curated model registry</li>
+<li><strong>Interactive browsing</strong>: Terminal UI to explore providers and models</li>
+<li><strong>One-click addition</strong>: Add models to your config without manual JSON editing</li>
+<li><strong>Capability filtering</strong>: Find models by vision, reasoning, tool use, etc.</li>
+<li><strong>Cost awareness</strong>: See input/output costs before adding</li>
+</ul>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<ol>
+<li>Run <code>/add-model</code> command in the terminal</li>
+<li>Browse providers in the left panel (paginated)</li>
+<li>Select a provider to see its models in the right panel</li>
+<li>Select a model to see detailed information (cost, context, capabilities)</li>
+<li>Press <code>Enter</code> to add the model to <code>extra_models.json</code></li>
+<li>Provide API credentials if prompted</li>
+</ol>
+<h3 id="system-perspective">System Perspective</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant AddModelMenu
+    participant ModelsDevRegistry
+    participant ModelFactory
+    participant Config
+    
+    User-&gt;&gt;AddModelMenu: /add-model
+    AddModelMenu-&gt;&gt;ModelsDevRegistry: Initialize
+    ModelsDevRegistry-&gt;&gt;ModelsDevRegistry: Fetch from models.dev API
+    ModelsDevRegistry--&gt;&gt;AddModelMenu: Providers + Models
+    AddModelMenu-&gt;&gt;User: Display interactive UI
+    User-&gt;&gt;AddModelMenu: Select model
+    AddModelMenu-&gt;&gt;ModelsDevRegistry: Get model details
+    ModelsDevRegistry--&gt;&gt;AddModelMenu: ModelInfo
+    AddModelMenu-&gt;&gt;User: Prompt for credentials
+    User-&gt;&gt;AddModelMenu: Enter API key
+    AddModelMenu-&gt;&gt;ModelFactory: Convert to config format
+    ModelFactory-&gt;&gt;Config: Write to extra_models.json
+    Config--&gt;&gt;AddModelMenu: Success
+    AddModelMenu--&gt;&gt;User: Model added
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Responsibility</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Entry point</td>
+<td><code>command_line/core_commands.py</code></td>
+<td><code>/add-model</code> command registration</td>
+</tr>
+<tr>
+<td>Interactive UI</td>
+<td><code>command_line/add_model_menu.py</code></td>
+<td>Split-panel TUI with prompt_toolkit</td>
+</tr>
+<tr>
+<td>Data parsing</td>
+<td><code>models_dev_parser.py</code></td>
+<td>ModelsDevRegistry, ModelInfo, ProviderInfo</td>
+</tr>
+<tr>
+<td>Model creation</td>
+<td><code>model_factory.py</code></td>
+<td><code>ModelFactory.load_config()</code>, <code>get_model()</code></td>
+</tr>
+<tr>
+<td>Config storage</td>
+<td><code>config.py</code></td>
+<td><code>EXTRA_MODELS_FILE</code>, <code>set_config_value()</code></td>
+</tr>
+<tr>
+<td>API fetching</td>
+<td><code>models_dev_parser.py</code></td>
+<td><code>MODELS_DEV_API_URL</code>, <code>_fetch_from_api()</code></td>
+</tr>
+</tbody></table>
+<h2 id="configuration">Configuration</h2>
+<table>
+<thead><tr>
+<th>Setting</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>EXTRA_MODELS_FILE</code></td>
+<td>User model config path</td>
+<td><code>~/.code_puppy/extra_models.json</code></td>
+</tr>
+<tr>
+<td><code>MODELS_DEV_API_URL</code></td>
+<td>Live models database</td>
+<td><code>https://models.dev/api.json</code></td>
+</tr>
+</tbody></table>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Provider support varies</strong>: Some providers (AWS Bedrock, Google Vertex, Cloudflare) require non-OpenAI-compatible authentication and are marked as unsupported in the UI.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Fallback behavior</strong>: If models.dev API times out or fails, the system automatically falls back to a bundled JSON database (<code>models_dev_api.json</code> ~535KB).</p>
+</div>
+<div class="callout callout-tip">
+<div class="callout-title">TIP</div>
+<p><strong>Custom models</strong>: The UI includes a "✨ Custom model..." option at the bottom of each provider's model list for adding models not in the database.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead><tr>
+<th>Scenario</th>
+<th>Behavior</th>
+<th>User Sees</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>models.dev API timeout</td>
+<td>Falls back to bundled DB</td>
+<td>Warning: "models.dev API timed out, using bundled fallback"</td>
+</tr>
+<tr>
+<td>Invalid JSON in bundled file</td>
+<td>Raises FileNotFoundError</td>
+<td>Error: "No data source available"</td>
+</tr>
+<tr>
+<td>Missing API key for selected model</td>
+<td>Skips model creation</td>
+<td>Warning: "API key is not set for [provider] endpoint"</td>
+</tr>
+<tr>
+<td>Provider not supported</td>
+<td>Shows ⚠️ icon</td>
+<td>Dimmed text with warning icon</td>
+</tr>
+</tbody></table>
+<h2 id="testing-this-feature">Testing This Feature</h2>
+<pre><code class="language-bash"># Run the add-model command
+uv run python -m code_puppy
+# Then type: /add-model
+
+# Or test the parser directly
+python -c "from code_puppy.models_dev_parser import ModelsDevRegistry; r = ModelsDevRegistry(); print(f'Loaded {len(r.providers)} providers, {len(r.models)} models')"</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="ModelConfiguration.html">Feature: Model Configuration</a> - How to configure and customize models</li>
+<li><a href="RoundRobinModels.html">Feature: Round-Robin Distribution</a> - Load balancing across multiple models</li>
+<li><a href="../Guides/AddModels.html">Guide: AddModels</a> - Detailed usage guide</li>
+<li><a href="../Guides/ModelConfiguration.html">Guide: ModelConfiguration</a> - Advanced configuration options</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

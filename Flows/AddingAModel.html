@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow: Adding a Model — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="AddingAModel.html" class="active">Adding AModel</a>
+<a href="AgentExecution.html">Agent Execution</a>
+<a href="FirstTimeSetup.html">First Time Setup</a>
+<a href="InstallingASkill.html">Installing ASkill</a>
+<a href="MessageHistoryProcessing.html">Message History Processing</a>
+<a href="PluginLoading.html">Plugin Loading</a>
+<a href="RunningATask.html">Running ATask</a>
+<a href="StreamEventProcessing.html">Stream Event Processing</a>
+<a href="ToolCallExecution.html">Tool Call Execution</a>
+<a href="index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="flow-adding-a-model">Flow: Adding a Model</h1>
+<h2 id="what-happens">What Happens?</h2>
+<p>This flow allows users to browse available AI models from the models.dev database, select a model, provide necessary credentials, and add it to the local <code>extra_models.json</code> configuration for use with Code Puppy.</p>
+<h2 id="trigger">Trigger</h2>
+<ul>
+<li><strong>User action</strong>: Running <code>/addmodel</code> or <code>/models add</code> command in the CLI</li>
+<li><strong>Entry point</strong>: <code>code_puppy/command_line/add_model_menu.py</code> → <code>interactive_model_picker()</code></li>
+</ul>
+<h2 id="outcome">Outcome</h2>
+<ul>
+<li>A new model entry is added to <code>extra_models.json</code> with proper configuration</li>
+<li>Required API credentials are saved to user config</li>
+<li>The model becomes available for selection in the model picker</li>
+</ul>
+<h2 id="step-by-step">Step-by-Step</h2>
+<pre class="mermaid">
+flowchart TD
+    A[User runs /addmodel] --&gt; B[Initialize ModelsDevRegistry]
+    B --&gt; C{API available?}
+    C --&gt;|Yes| D[Fetch from models.dev API]
+    C --&gt;|No| E[Fallback to bundled models_dev_api.json]
+    D --&gt; F[Display Provider List]
+    E --&gt; F
+    F --&gt; G{User selects provider}
+    G --&gt; H[Display Models for Provider]
+    H --&gt; I{User selects model}
+    I --&gt;|Custom model| J[Prompt for model ID &amp; context size]
+    I --&gt;|Listed model| K[Check tool calling support]
+    J --&gt; L[Check credentials]
+    K --&gt; L
+    L --&gt; M{Missing credentials?}
+    M --&gt;|Yes| N[Prompt for API keys]
+    M --&gt;|No| O[Add to extra_models.json]
+    N --&gt; O
+    O --&gt; P[Model ready to use]
+</pre>
+<h3 id="1-initialize-registry">1. Initialize Registry</h3>
+<ul>
+<li><strong>What</strong>: Load the models database from either live API or bundled JSON</li>
+<li><strong>Where</strong>: <code>AddModelMenu._initialize_registry()</code> in <code>add_model_menu.py</code></li>
+<li><strong>Failure mode</strong>: If both API and bundled file fail, show warning and exit</li>
+</ul>
+<h3 id="2-browse-providers">2. Browse Providers</h3>
+<ul>
+<li><strong>What</strong>: Display paginated list of model providers (OpenAI, Anthropic, Groq, etc.)</li>
+<li><strong>Where</strong>: <code>AddModelMenu._render_provider_list()</code></li>
+<li><strong>Failure mode</strong>: Unsupported providers (e.g., AWS Bedrock, Google Vertex) are marked with ⚠️ and cannot be selected</li>
+</ul>
+<h3 id="3-select-provider">3. Select Provider</h3>
+<ul>
+<li><strong>What</strong>: User navigates with ↑/↓, pages with ←/→, enters provider with Enter</li>
+<li><strong>Where</strong>: Key bindings in <code>AddModelMenu.run()</code></li>
+<li><strong>Failure mode</strong>: N/A - navigation is always available</li>
+</ul>
+<h3 id="4-browse-models">4. Browse Models</h3>
+<ul>
+<li><strong>What</strong>: Display models for selected provider with capability icons (👁 vision, 🔧 tool calling, 🧠 reasoning)</li>
+<li><strong>Where</strong>: <code>AddModelMenu._render_model_list()</code></li>
+<li><strong>Special option</strong>: "✨ Custom model..." at end of list for manual entry</li>
+</ul>
+<h3 id="5-select-model">5. Select Model</h3>
+<ul>
+<li><strong>What</strong>: User selects a model or custom model option</li>
+<li><strong>Where</strong>: <code>AddModelMenu._add_current_model()</code></li>
+<li><strong>Failure mode</strong>:</li>
+<li>If unsupported provider: show error and exit</li>
+<li>If custom model: enter custom model flow</li>
+<li>If listed model: enter credential check flow</li>
+</ul>
+<h3 id="6-check-tool-calling-support">6. Check Tool Calling Support</h3>
+<ul>
+<li><strong>What</strong>: Warn user if model doesn't support tool calling (cannot use tools)</li>
+<li><strong>Where</strong>: <code>AddModelMenu._render_model_details()</code> shows ⚠️ warning</li>
+<li><strong>Failure mode</strong>: User can still proceed but gets confirmation prompt</li>
+</ul>
+<h3 id="7-prompt-for-credentials">7. Prompt for Credentials</h3>
+<ul>
+<li><strong>What</strong>: Check environment for required API keys, prompt for missing ones</li>
+<li><strong>Where</strong>: <code>AddModelMenu._prompt_for_credentials()</code></li>
+<li><strong>Failure mode</strong>: User can skip credentials (can be set later with <code>/set</code>)</li>
+</ul>
+<h3 id="8-add-to-configuration">8. Add to Configuration</h3>
+<ul>
+<li><strong>What</strong>: Build model config and save to <code>extra_models.json</code></li>
+<li><strong>Where</strong>: <code>AddModelMenu._add_model_to_extra_config()</code></li>
+<li><strong>Failure mode</strong>: JSON parse errors, file write errors</li>
+</ul>
+<h2 id="data-transformations">Data Transformations</h2>
+<table>
+<thead><tr>
+<th>Stage</th>
+<th>Input</th>
+<th>Output</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Provider selection</td>
+<td><code>ProviderInfo</code></td>
+<td>Stored in <code>self.current_provider</code></td>
+<td><code>_enter_provider()</code></td>
+</tr>
+<tr>
+<td>Model selection</td>
+<td><code>ModelInfo</code></td>
+<td>Stored in <code>self.pending_model</code></td>
+<td><code>_add_current_model()</code></td>
+</tr>
+<tr>
+<td>Config build</td>
+<td><code>ModelInfo</code> + <code>ProviderInfo</code></td>
+<td>Model config dict</td>
+<td><code>_build_model_config()</code></td>
+</tr>
+<tr>
+<td>Save</td>
+<td><code>{model_key: config}</code></td>
+<td>Updated <code>extra_models.json</code></td>
+<td><code>_add_model_to_extra_config()</code></td>
+</tr>
+</tbody></table>
+<h2 id="configuration-format">Configuration Format</h2>
+<p>The resulting <code>extra_models.json</code> entry looks like:</p>
+<pre><code class="language-json">{
+  "groq-llama-3.1-70b-versatile": {
+    "type": "custom_openai",
+    "name": "llama-3.1-70b-versatile",
+    "custom_endpoint": {
+      "url": "https://api.groq.com/openai/v1",
+      "api_key": "$GROQ_API_KEY"
+    },
+    "context_length": 131072,
+    "supported_settings": ["temperature", "seed", "top_p"]
+  }
+}</code></pre>
+<h2 id="failure-handling">Failure Handling</h2>
+<table>
+<thead><tr>
+<th>Failure Point</th>
+<th>Detection</th>
+<th>Recovery</th>
+<th>Alert?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>No models data</td>
+<td>Empty providers list</td>
+<td>Show warning, exit</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Unsupported provider</td>
+<td><code>provider.id in UNSUPPORTED_PROVIDERS</code></td>
+<td>Block selection, show reason</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>No tool calling</td>
+<td><code>not model.tool_call</code></td>
+<td>Show warning, confirm with user</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Missing credentials</td>
+<td><code>os.environ.get(env_var)</code> returns None</td>
+<td>Prompt user, allow skip</td>
+<td>No</td>
+</tr>
+<tr>
+<td>JSON parse error</td>
+<td><code>json.JSONDecodeError</code></td>
+<td>Show error, abort</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>File write error</td>
+<td>Exception in atomic write</td>
+<td>Show error, abort</td>
+<td>Yes</td>
+</tr>
+</tbody></table>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Typical duration</strong>: 10-30 seconds for a complete flow</li>
+<li><strong>Bottlenecks</strong>: API fetch on first run (~2-5 seconds)</li>
+<li><strong>Scaling considerations</strong>: Pagination handles large provider/model lists efficiently</li>
+</ul>
+<h2 id="debugging-this-flow">Debugging This Flow</h2>
+<h3 id="key-log-messages">Key Log Messages</h3>
+<table>
+<thead><tr>
+<th>Message</th>
+<th>Meaning</th>
+<th>Action</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>Models database unavailable</code></td>
+<td>Both API and bundled file failed</td>
+<td>Check network, verify bundled file exists</td>
+</tr>
+<tr>
+<td><code>No providers available</code></td>
+<td>Registry loaded but empty</td>
+<td>Check bundled JSON integrity</td>
+</tr>
+<tr>
+<td><code>Cannot add model from {provider}</code></td>
+<td>Unsupported provider</td>
+<td>Choose different provider</td>
+</tr>
+<tr>
+<td><code>{model} does NOT support tool calling</code></td>
+<td>Limited functionality model</td>
+<td>Confirm or cancel</td>
+</tr>
+<tr>
+<td><code>Added {model_key} to extra_models.json</code></td>
+<td>Success</td>
+<td>Model ready to use</td>
+</tr>
+</tbody></table>
+<h3 id="common-issues">Common Issues</h3>
+<h4 id="model-not-appearing-in-picker-after-adding">Model not appearing in picker after adding</h4>
+<p><strong>Likely Cause</strong>: Config not reloaded <strong>Fix</strong>: Run <code>/reload</code> command or restart Code Puppy</p>
+<h4 id="api-key-not-being-recognized">API key not being recognized</h4>
+<p><strong>Likely Cause</strong>: Environment variable not set correctly <strong>Fix</strong>: Verify with <code>/get {ENV_VAR}</code> or check <code>~/.code_puppy/config.json</code></p>
+<h4 id="custom-model-not-working">Custom model not working</h4>
+<p><strong>Likely Cause</strong>: Wrong model ID or context size <strong>Fix</strong>: Remove from <code>extra_models.json</code> and re-add with correct values</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/ModelDiscovery.html">Feature: Model Discovery</a></li>
+<li><a href="../Features/ModelConfiguration.html">Feature: Model Configuration</a></li>
+<li><a href="../Concepts/ModelFactory.html">Concept: Model Factory</a></li>
+<li><a href="../docs/Guides/AddModels.html">Guide: Add Models</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

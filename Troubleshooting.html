@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting Guide — Code Puppy Internals</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="Architecture.html">Architecture</a>
+<a href="Troubleshooting.html" class="active">Troubleshooting</a>
+<a href="index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="Concepts/CallbackSystem.html">Callback System</a>
+<a href="Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="Endpoints/DeleteSession.html">Delete Session</a>
+<a href="Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="Endpoints/GetCommand.html">Get Command</a>
+<a href="Endpoints/GetConfig.html">Get Config</a>
+<a href="Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="Endpoints/GetSession.html">Get Session</a>
+<a href="Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="Endpoints/ListAgents.html">List Agents</a>
+<a href="Endpoints/ListCommands.html">List Commands</a>
+<a href="Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="Endpoints/ListSessions.html">List Sessions</a>
+<a href="Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="Features/AgentCreation.html">Agent Creation</a>
+<a href="Features/AgentSwitching.html">Agent Switching</a>
+<a href="Features/BrowserControl.html">Browser Control</a>
+<a href="Features/CustomSkills.html">Custom Skills</a>
+<a href="Features/HookSystem.html">Hook System</a>
+<a href="Features/JSONAgents.html">JSONAgents</a>
+<a href="Features/MCPManagement.html">MCPManagement</a>
+<a href="Features/MPCCatalog.html">MPCCatalog</a>
+<a href="Features/ModelConfiguration.html">Model Configuration</a>
+<a href="Features/ModelDiscovery.html">Model Discovery</a>
+<a href="Features/PluginDevelopment.html">Plugin Development</a>
+<a href="Features/PythonAgents.html">Python Agents</a>
+<a href="Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="Features/SkillInstallation.html">Skill Installation</a>
+<a href="Features/SkillUsage.html">Skill Usage</a>
+<a href="Features/TaskScheduling.html">Task Scheduling</a>
+<a href="Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="Flows/AddingAModel.html">Adding AModel</a>
+<a href="Flows/AgentExecution.html">Agent Execution</a>
+<a href="Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="Flows/PluginLoading.html">Plugin Loading</a>
+<a href="Flows/RunningATask.html">Running ATask</a>
+<a href="Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="Views/AgentPicker.html">Agent Picker</a>
+<a href="Views/DiffMenu.html">Diff Menu</a>
+<a href="Views/MCPManager.html">MCPManager</a>
+<a href="Views/MainCLI.html">Main CLI</a>
+<a href="Views/ModelPicker.html">Model Picker</a>
+<a href="Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="Views/SkillsMenu.html">Skills Menu</a>
+<a href="Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="troubleshooting-guide">Troubleshooting Guide</h1>
+<h2 id="quick-diagnostics">Quick Diagnostics</h2>
+<h3 id="health-checks">Health Checks</h3>
+<table>
+<thead><tr>
+<th>Check</th>
+<th>Command/Location</th>
+<th>Healthy State</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Agent running</td>
+<td>Check CLI</td>
+<td>Prompt shows active agent</td>
+</tr>
+<tr>
+<td>MCP servers</td>
+<td><code>/mcp status</code></td>
+<td>Servers show "running"</td>
+</tr>
+<tr>
+<td>Model configured</td>
+<td><code>/model</code></td>
+<td>Current model displayed</td>
+</tr>
+<tr>
+<td>Skills installed</td>
+<td><code>/skills list</code></td>
+<td>Skills shown in list</td>
+</tr>
+</tbody></table>
+<h3 id="key-logs">Key Logs</h3>
+<table>
+<thead><tr>
+<th>Log</th>
+<th>Location</th>
+<th>What to Look For</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>App logs</td>
+<td><code>~/.code_puppy/logs/</code></td>
+<td>Errors, warnings</td>
+</tr>
+<tr>
+<td>MCP logs</td>
+<td><code>~/.code_puppy/mcp_logs/</code></td>
+<td>Server startup failures</td>
+</tr>
+<tr>
+<td>Plugin errors</td>
+<td>Console output</td>
+<td>Callback exceptions</td>
+</tr>
+</tbody></table>
+<h2 id="common-issues">Common Issues</h2>
+<h3 id="agent-issues">Agent Issues</h3>
+<h4 id="symptom-agent-not-responding">Symptom: Agent not responding</h4>
+<p><strong>Likely Causes:</strong></p>
+<ol>
+<li>LLM API key not configured</li>
+<li>Model not found or invalid</li>
+<li>Rate limit exceeded</li>
+</ol>
+<p><strong>Diagnosis:</strong></p>
+<pre><code class="language-bash"># Check current model
+/model
+
+# Check API keys in environment
+echo $OPENAI_API_KEY
+echo $ANTHROPIC_API_KEY</code></pre>
+<p><strong>Resolution:</strong></p>
+<ol>
+<li>Set missing API keys as environment variables</li>
+<li>Use <code>/add_model</code> to configure a working model</li>
+<li>Wait for rate limits to reset</li>
+</ol>
+<h4 id="symptom-agent-crashes-mid-task">Symptom: Agent crashes mid-task</h4>
+<p><strong>Likely Causes:</strong></p>
+<ol>
+<li>Token limit exceeded</li>
+<li>Invalid tool response</li>
+<li>Network timeout</li>
+</ol>
+<p><strong>Diagnosis:</strong></p>
+<pre><code class="language-bash"># Check logs for error
+tail -f ~/.code_puppy/logs/*.log</code></pre>
+<p><strong>Resolution:</strong></p>
+<ol>
+<li>Use <code>/truncate</code> to reduce message history</li>
+<li>Retry the task</li>
+<li>Check network connectivity</li>
+</ol>
+<h3 id="model-issues">Model Issues</h3>
+<h4 id="symptom-model-not-found">Symptom: Model not found</h4>
+<p><strong>Likely Causes:</strong></p>
+<ol>
+<li>Model name typo</li>
+<li>Model not configured</li>
+<li>Provider API down</li>
+</ol>
+<p><strong>Resolution:</strong></p>
+<ol>
+<li>Use <code>/add_model</code> to browse available models</li>
+<li>Check <code>~/.code_puppy/extra_models.json</code></li>
+<li>Verify provider status</li>
+</ol>
+<h4 id="symptom-model-returns-errors">Symptom: Model returns errors</h4>
+<p><strong>Likely Causes:</strong></p>
+<ol>
+<li>Invalid API key</li>
+<li>Insufficient credits/quota</li>
+<li>Model deprecated</li>
+</ol>
+<p><strong>Resolution:</strong></p>
+<ol>
+<li>Regenerate API key</li>
+<li>Check provider billing</li>
+<li>Switch to alternative model</li>
+</ol>
+<h3 id="mcp-issues">MCP Issues</h3>
+<h4 id="symptom-mcp-server-won-t-start">Symptom: MCP server won't start</h4>
+<p><strong>Likely Causes:</strong></p>
+<ol>
+<li>Server binary not found</li>
+<li>Configuration invalid</li>
+<li>Port already in use</li>
+</ol>
+<p><strong>Diagnosis:</strong></p>
+<pre><code class="language-bash"># Check server logs
+~/.code_puppy/mcp_logs/&lt;server-name&gt;.log</code></pre>
+<p><strong>Resolution:</strong></p>
+<ol>
+<li>Install missing server dependencies</li>
+<li>Fix configuration in <code>~/.code_puppy/mcp_servers.json</code></li>
+<li>Use different port</li>
+</ol>
+<h4 id="symptom-mcp-tools-not-available">Symptom: MCP tools not available</h4>
+<p><strong>Likely Causes:</strong></p>
+<ol>
+<li>Server not started</li>
+<li>Tools not registered</li>
+<li>Connection lost</li>
+</ol>
+<p><strong>Resolution:</strong></p>
+<ol>
+<li>Start server: <code>/mcp start &lt;server&gt;</code></li>
+<li>Check server status: <code>/mcp status</code></li>
+<li>Restart server if needed</li>
+</ol>
+<h3 id="plugin-issues">Plugin Issues</h3>
+<h4 id="symptom-plugin-not-loading">Symptom: Plugin not loading</h4>
+<p><strong>Likely Causes:</strong></p>
+<ol>
+<li><code>register_callbacks.py</code> missing</li>
+<li>Callback registration error</li>
+<li>Plugin in wrong location</li>
+</ol>
+<p><strong>Resolution:</strong></p>
+<ol>
+<li>Ensure plugin has <code>register_callbacks.py</code> at root</li>
+<li>Check for syntax errors</li>
+<li>Place in <code>~/.code_puppy/plugins/&lt;name&gt;/</code></li>
+</ol>
+<h4 id="symptom-custom-command-not-working">Symptom: Custom command not working</h4>
+<p><strong>Likely Causes:</strong></p>
+<ol>
+<li>Command not registered</li>
+<li>Hook not triggered</li>
+<li>Plugin conflict</li>
+</ol>
+<p><strong>Resolution:</strong></p>
+<ol>
+<li>Check plugin logs for errors</li>
+<li>Verify callback registration</li>
+<li>Disable other plugins to isolate</li>
+</ol>
+<h3 id="browser-issues">Browser Issues</h3>
+<h4 id="symptom-browser-automation-fails">Symptom: Browser automation fails</h4>
+<p><strong>Likely Causes:</strong></p>
+<ol>
+<li>Chromium not installed</li>
+<li>Display issues (headless)</li>
+<li>Website blocking automation</li>
+</ol>
+<p><strong>Resolution:</strong></p>
+<ol>
+<li>Install Chromium: <code>uv run playwright install chromium</code></li>
+<li>Check for display errors in logs</li>
+<li>Try different website</li>
+</ol>
+<h2 id="where-to-look-when">Where to Look When...</h2>
+<table>
+<thead><tr>
+<th>You Need To...</th>
+<th>Look Here</th>
+<th>Key Files</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Debug authentication</td>
+<td><a href="Features/ModelConfiguration.html">Feature: Model Configuration</a></td>
+<td><code>code_puppy/model_factory.py</code></td>
+</tr>
+<tr>
+<td>Trace a request</td>
+<td><a href="Flows/AgentExecution.html">Flow: Agent Execution</a></td>
+<td><code>code_puppy/base_agent.py</code></td>
+</tr>
+<tr>
+<td>Understand config</td>
+<td><a href="Concepts/CallbackSystem.html">Concept: Callback System</a></td>
+<td><code>code_puppy/callbacks.py</code></td>
+</tr>
+<tr>
+<td>Add a new feature</td>
+<td><a href="Features/PluginDevelopment.html">Feature: Plugin Development</a></td>
+<td><code>code_puppy/plugins/</code></td>
+</tr>
+<tr>
+<td>Debug tool calls</td>
+<td><a href="Flows/ToolCallExecution.html">Flow: Tool Call Execution</a></td>
+<td><code>code_puppy/tools/</code></td>
+</tr>
+</tbody></table>
+<h2 id="emergency-procedures">Emergency Procedures</h2>
+<h3 id="agent-frozen-unresponsive">Agent Frozen/Unresponsive</h3>
+<ol>
+<li><strong>Immediate action</strong>: Press <code>Ctrl+C</code> to cancel</li>
+<li><strong>Diagnostic step</strong>: Check logs for stuck operation</li>
+<li><strong>Resolution step</strong>: Restart Code Puppy</li>
+<li><strong>Verification step</strong>: Run simple task to confirm</li>
+</ol>
+<h3 id="data-corruption">Data Corruption</h3>
+<ol>
+<li><strong>Immediate action</strong>: Stop using Code Puppy</li>
+<li><strong>Diagnostic step</strong>: Backup <code>~/.code_puppy/</code></li>
+<li><strong>Resolution step</strong>: Delete config, reconfigure</li>
+<li><strong>Verification step</strong>: Test with simple task</li>
+</ol>
+<h3 id="plugin-causing-crashes">Plugin Causing Crashes</h3>
+<ol>
+<li><strong>Immediate action</strong>: Disable plugin by renaming folder</li>
+<li><strong>Diagnostic step</strong>: Check which plugin loaded last</li>
+<li><strong>Resolution step</strong>: Fix plugin code or remove</li>
+<li><strong>Verification step</strong>: Restart Code Puppy</li>
+</ol>
+<h2 id="getting-help">Getting Help</h2>
+<ul>
+<li><strong>Documentation</strong>: Check relevant feature/flow docs</li>
+<li><strong>Logs</strong>: <code>~/.code_puppy/logs/</code></li>
+<li><strong>Discord</strong>: Community support available</li>
+<li><strong>GitHub Issues</strong>: Report bugs with logs attached</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

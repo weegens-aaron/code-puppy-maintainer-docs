@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: MCP Server Management — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="AgentCreation.html">Agent Creation</a>
+<a href="AgentSwitching.html">Agent Switching</a>
+<a href="BrowserControl.html">Browser Control</a>
+<a href="CustomSkills.html">Custom Skills</a>
+<a href="HookSystem.html">Hook System</a>
+<a href="JSONAgents.html">JSONAgents</a>
+<a href="MCPManagement.html" class="active">MCPManagement</a>
+<a href="MPCCatalog.html">MPCCatalog</a>
+<a href="ModelConfiguration.html">Model Configuration</a>
+<a href="ModelDiscovery.html">Model Discovery</a>
+<a href="PluginDevelopment.html">Plugin Development</a>
+<a href="PythonAgents.html">Python Agents</a>
+<a href="RoundRobinModels.html">Round Robin Models</a>
+<a href="SkillInstallation.html">Skill Installation</a>
+<a href="SkillUsage.html">Skill Usage</a>
+<a href="TaskScheduling.html">Task Scheduling</a>
+<a href="TerminalIntegration.html">Terminal Integration</a>
+<a href="UniversalConstructor.html">Universal Constructor</a>
+<a href="index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-mcp-server-management">Feature: MCP Server Management</h1>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>MCP Server Management provides a complete system for registering, starting, stopping, and monitoring Model Context Protocol (MCP) servers that extend Code Puppy's capabilities with external tools and data sources.</p>
+<h2 id="why-does-this-exist">Why Does This Exist?</h2>
+<p>MCP servers allow Code Puppy to interact with external systems like file systems, databases, APIs, and custom tools. This feature provides:</p>
+<ul>
+<li><strong>Centralized management</strong> of all MCP server connections</li>
+<li><strong>Runtime control</strong> (start/stop/restart servers without restarting Code Puppy)</li>
+<li><strong>Health monitoring</strong> and automatic quarantine of failing servers</li>
+<li><strong>Interactive CLI</strong> for managing servers via <code>/mcp</code> commands</li>
+<li><strong>Catalog integration</strong> for discovering and installing pre-configured servers</li>
+</ul>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<p>Users interact with MCP servers through the <code>/mcp</code> command family:</p>
+<pre><code class="language-bash">/mcp list              # Show all registered servers and their status
+/mcp start &lt;name&gt;      # Enable and start a server
+/mcp stop &lt;name&gt;       # Disable and stop a server
+/mcp status &lt;name&gt;     # Show detailed status for a server
+/mcp install           # Browse and install from catalog
+/mcp edit &lt;name&gt;       # Edit server configuration
+/mcp remove &lt;name&gt;     # Remove a server
+/mcp logs &lt;name&gt;       # View server logs
+/mcp test &lt;name&gt;       # Test server connection</code></pre>
+<h3 id="system-perspective">System Perspective</h3>
+<pre class="mermaid">
+flowchart TB
+    subgraph User
+        CLI[/mcp commands/]
+    end
+    
+    subgraph MCPManager
+        Manager[MCPManager]
+        Registry[ServerRegistry]
+        Tracker[StatusTracker]
+    end
+    
+    subgraph Servers
+        Stdio[Stdio Servers&lt;br/&gt;BlockingMCPServerStdio]
+        SSE[SSE Servers&lt;br/&gt;MCPServerSSE]
+        HTTP[HTTP Servers&lt;br/&gt;MCPServerStreamableHTTP]
+    end
+    
+    subgraph Lifecycle
+        LifecycleMgr[Async Lifecycle Manager]
+        Process[Subprocess/Connection]
+    end
+    
+    CLI --&gt; Manager
+    Manager --&gt; Registry
+    Manager --&gt; Tracker
+    Manager --&gt; LifecycleMgr
+    LifecycleMgr --&gt; Process
+    Process --&gt; Stdio
+    Process --&gt; SSE
+    Process --&gt; HTTP
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Responsibility</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Core Manager</strong></td>
+<td><code>code_puppy/mcp_/manager.py</code></td>
+<td><code>MCPManager</code> - central coordinator</td>
+</tr>
+<tr>
+<td><strong>Registry</strong></td>
+<td><code>code_puppy/mcp_/registry.py</code></td>
+<td><code>ServerRegistry</code> - CRUD + persistence</td>
+</tr>
+<tr>
+<td><strong>Managed Server</strong></td>
+<td><code>code_puppy/mcp_/managed_server.py</code></td>
+<td><code>ManagedMCPServer</code> wrapper</td>
+</tr>
+<tr>
+<td><strong>Status Tracking</strong></td>
+<td><code>code_puppy/mcp_/status_tracker.py</code></td>
+<td>Event logging, health monitoring</td>
+</tr>
+<tr>
+<td><strong>Lifecycle</strong></td>
+<td><code>code_puppy/mcp_/async_lifecycle.py</code></td>
+<td>Async start/stop coordination</td>
+</tr>
+<tr>
+<td><strong>Blocking Startup</strong></td>
+<td><code>code_puppy/mcp_/blocking_startup.py</code></td>
+<td>Stdio server initialization</td>
+</tr>
+<tr>
+<td><strong>CLI Handler</strong></td>
+<td><code>code_puppy/command_line/mcp/handler.py</code></td>
+<td>Command routing</td>
+</tr>
+<tr>
+<td><strong>Commands</strong></td>
+<td><code>code_puppy/command_line/mcp/*.py</code></td>
+<td>Individual command implementations</td>
+</tr>
+<tr>
+<td><strong>Catalog</strong></td>
+<td><code>code_puppy/mcp_/server_registry_catalog.py</code></td>
+<td>Pre-configured servers</td>
+</tr>
+</tbody></table>
+<h2 id="server-types">Server Types</h2>
+<h3 id="stdio-servers">Stdio Servers</h3>
+<ul>
+<li><strong>Communication</strong>: stdin/stdout pipes</li>
+<li><strong>Use Case</strong>: Local processes (file systems, CLI tools)</li>
+<li><strong>Implementation</strong>: <code>BlockingMCPServerStdio</code></li>
+<li><strong>Config Example</strong>: ```json { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem"], "timeout": 60 } ```</li>
+</ul>
+<h3 id="sse-servers">SSE Servers</h3>
+<ul>
+<li><strong>Communication</strong>: Server-Sent Events over HTTP</li>
+<li><strong>Use Case</strong>: Remote servers, web services</li>
+<li><strong>Implementation</strong>: <code>MCPServerSSE</code></li>
+<li><strong>Config Example</strong>: ```json { "url": "http://localhost:8080/sse", "timeout": 30 } ```</li>
+</ul>
+<h3 id="http-servers">HTTP Servers</h3>
+<ul>
+<li><strong>Communication</strong>: Streamable HTTP</li>
+<li><strong>Use Case</strong>: Modern HTTP-based MCP servers</li>
+<li><strong>Implementation</strong>: <code>MCPServerStreamableHTTP</code></li>
+<li><strong>Config Example</strong>: ```json { "url": "http://localhost:8080/mcp", "headers": {"Authorization": "Bearer token"} } ```</li>
+</ul>
+<h2 id="server-states">Server States</h2>
+<table>
+<thead><tr>
+<th>State</th>
+<th>Description</th>
+<th>User Action</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>STOPPED</code></td>
+<td>Registered but not enabled</td>
+<td>Run <code>/mcp start</code></td>
+</tr>
+<tr>
+<td><code>STARTING</code></td>
+<td>Starting subprocess/connection</td>
+<td>Wait for ready</td>
+</tr>
+<tr>
+<td><code>RUNNING</code></td>
+<td>Active and available</td>
+<td>Normal operation</td>
+</tr>
+<tr>
+<td><code>STOPPING</code></td>
+<td>Shutting down</td>
+<td>Wait for stop</td>
+</tr>
+<tr>
+<td><code>ERROR</code></td>
+<td>Failed to start/connect</td>
+<td>Check logs, restart</td>
+</tr>
+<tr>
+<td><code>QUARANTINED</code></td>
+<td>Temporarily disabled due to errors</td>
+<td>Wait or manually unquarantine</td>
+</tr>
+</tbody></table>
+<h2 id="configuration">Configuration</h2>
+<h3 id="server-configuration-file">Server Configuration File</h3>
+<p>Servers are stored in <code>~/.local/share/code_puppy/mcp_registry.json</code>:</p>
+<pre><code class="language-json">{
+  "uuid-123": {
+    "id": "uuid-123",
+    "name": "filesystem",
+    "type": "stdio",
+    "enabled": true,
+    "config": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/dir"]
+    }
+  }
+}</code></pre>
+<h3 id="environment-variables">Environment Variables</h3>
+<p>Server configs support <code>$VAR</code> and <code>${VAR}</code> expansion:</p>
+<pre><code class="language-json">{
+  "command": "${MCP_FILESYSTEM_CMD}",
+  "args": ["${MCP_FILESYSTEM_ARGS}"]
+}</code></pre>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Async Start Behavior</strong>: Stdio servers start their subprocess asynchronously. <code>/mcp start</code> returns immediately - use <code>/mcp status</code> to check if fully ready.</p>
+</div>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Server Must Be Enabled</strong>: Servers are created in disabled state. They must be explicitly started with <code>/mcp start</code> before agents can use them.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Quarantine Auto-Expiry</strong>: Quarantined servers automatically recover after the quarantine period expires.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Name Uniqueness</strong>: Server names must be unique. Use IDs internally, names for CLI.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead><tr>
+<th>Scenario</th>
+<th>Behavior</th>
+<th>User Sees</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Server not found</td>
+<td>Command fails gracefully</td>
+<td>"Server 'X' not found" with suggestions</td>
+</tr>
+<tr>
+<td>Invalid config</td>
+<td>Registration rejected</td>
+<td>Validation error with details</td>
+</tr>
+<tr>
+<td>Subprocess fails</td>
+<td>State → ERROR</td>
+<td>Error message in status</td>
+</tr>
+<tr>
+<td>Connection timeout</td>
+<td>State → ERROR (SSE/HTTP)</td>
+<td>Timeout error in status</td>
+</tr>
+<tr>
+<td>Catalog unavailable</td>
+<td>Install falls back to menu</td>
+<td>"Catalog not available" message</td>
+</tr>
+</tbody></table>
+<h2 id="testing-this-feature">Testing This Feature</h2>
+<h3 id="manual-testing">Manual Testing</h3>
+<pre><code class="language-bash"># Start Code Puppy
+code-puppy
+
+# List servers (should be empty initially)
+/mcp list
+
+# Install a server from catalog
+/mcp install
+
+# Start the filesystem server
+/mcp start filesystem
+
+# Check status
+/mcp status filesystem
+
+# Test the server
+/mcp test filesystem
+
+# Stop the server
+/mcp stop filesystem
+
+# Remove the server
+/mcp remove filesystem</code></pre>
+<h3 id="programmatic-testing">Programmatic Testing</h3>
+<pre><code class="language-python">from code_puppy.mcp_.manager import get_mcp_manager
+
+manager = get_mcp_manager()
+
+# List all servers
+servers = manager.list_servers()
+
+# Start a server
+success = await manager.start_server("filesystem")
+
+# Get server status
+status = manager.get_server_status("filesystem")</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="MPCCatalog.html">Feature: MCP Catalog</a></li>
+<li><a href="../Flows/PluginLoading.html">Flow: Plugin Loading</a></li>
+<li><a href="../Concepts/MCPIntegration.html">Concept: MCP Integration</a></li>
+<li><a href="../Guides/ManageMCP.html">Guide: Manage MCP Servers</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

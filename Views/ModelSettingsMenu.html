@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>View: Model Settings Menu — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="AgentPicker.html">Agent Picker</a>
+<a href="DiffMenu.html">Diff Menu</a>
+<a href="MCPManager.html">MCPManager</a>
+<a href="MainCLI.html">Main CLI</a>
+<a href="ModelPicker.html">Model Picker</a>
+<a href="ModelSettingsMenu.html" class="active">Model Settings Menu</a>
+<a href="OnboardingWizard.html">Onboarding Wizard</a>
+<a href="SkillsMenu.html">Skills Menu</a>
+<a href="TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="view-model-settings-menu">View: Model Settings Menu</h1>
+<h2 id="overview">Overview</h2>
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Route</td>
+<td><code>/settings &lt;model-name&gt;</code> (slash command)</td>
+</tr>
+<tr>
+<td>Auth Required</td>
+<td>N/A (local CLI)</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Split-panel (models/settings)</td>
+</tr>
+</tbody></table>
+<h2 id="what-does-this-view-do">What Does This View Do?</h2>
+<p>The Model Settings Menu provides an interactive terminal UI for configuring per-model AI parameters. Users can select a model and adjust settings like temperature, seed, reasoning effort, and verbosity. Settings are stored per-model and persist across sessions.</p>
+<h2 id="screenshot-wireframe">Screenshot/Wireframe</h2>
+<pre><code>┌────────────────────────────────┬──────────────────────────────────────────────┐
+│  🐕 Select a Model to Configure│  ⚙ Settings for gpt-5.3-codex               │
+│                                │                                              │
+│  › gpt-5 (active) ⚙           │  › Temperature: 0.70                         │
+│     gpt-5.3-codex ⚙           │  › Seed: 12345                             │
+│     chatgpt-gpt-5.3           │  › Top-P: 1.00                             │
+│     claude-opus-4-6           │  › Reasoning Effort: medium                │
+│     claude-sonnet-4           │  › Verbosity: medium                       │
+│                                │  › Extended Thinking: enabled              │
+│                                │  › Thinking Budget: 10000                  │
+│                                │  › Interleaved Thinking: Disabled          │
+│                                │  › Clear Thinking: Disabled                │
+│                                │                                              │
+│  ↑/↓ Navigate                  │  ←/→ Adjust value                          │
+│  PgUp/PgDn Change page         │  Enter Save                                │
+│  Enter Configure model         │  Esc Exit                                  │
+│  Esc Exit                      │                                              │
+└────────────────────────────────┴──────────────────────────────────────────────┘</code></pre>
+<h2 id="user-actions">User Actions</h2>
+<table>
+<thead><tr>
+<th>Action</th>
+<th>Trigger</th>
+<th>Result</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Navigate up</td>
+<td>↑</td>
+<td>Move selection up</td>
+</tr>
+<tr>
+<td>Navigate down</td>
+<td>↓</td>
+<td>Move selection down</td>
+</tr>
+<tr>
+<td>Previous page</td>
+<td>PgUp</td>
+<td>Go to previous page</td>
+</tr>
+<tr>
+<td>Next page</td>
+<td>PgDn</td>
+<td>Go to next page</td>
+</tr>
+<tr>
+<td>Select model</td>
+<td>Enter</td>
+<td>Open settings for model</td>
+</tr>
+<tr>
+<td>Adjust value</td>
+<td>←/→</td>
+<td>Decrease/increase numeric value</td>
+</tr>
+<tr>
+<td>Save</td>
+<td>Enter</td>
+<td>Save current setting</td>
+</tr>
+<tr>
+<td>Exit</td>
+<td>Esc</td>
+<td>Return to previous view</td>
+</tr>
+</tbody></table>
+<h2 id="page-structure">Page Structure</h2>
+<pre class="mermaid">
+flowchart TD
+    subgraph ModelView["Model Selection View"]
+        ModelList[Model List]
+        ModelIndicators["Active/Settings indicators"]
+        ModelNav["Navigation Hints"]
+    end
+    
+    subgraph SettingsView["Settings View"]
+        SettingList[Setting List]
+        SettingEditor[Setting Editor]
+        SettingNav["Navigation Hints"]
+    end
+    
+    ModelView --&gt;|Enter| SettingsView
+    SettingsView --&gt;|Esc| ModelView
+</pre>
+<h2 id="components-used">Components Used</h2>
+<table>
+<thead><tr>
+<th>Component</th>
+<th>Purpose</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>FormattedTextControl</code></td>
+<td>Styled text rendering</td>
+<td><code>prompt_toolkit.layout.controls</code></td>
+</tr>
+<tr>
+<td><code>VSplit</code></td>
+<td>Split-panel layout</td>
+<td><code>prompt_toolkit.layout</code></td>
+</tr>
+<tr>
+<td><code>Frame</code></td>
+<td>Panel borders/titles</td>
+<td><code>prompt_toolkit.widgets</code></td>
+</tr>
+<tr>
+<td><code>ModelFactory</code></td>
+<td>Model loading</td>
+<td><code>model_factory.py</code></td>
+</tr>
+<tr>
+<td><code>get_all_model_settings</code></td>
+<td>Settings retrieval</td>
+<td><code>config.py</code></td>
+</tr>
+<tr>
+<td><code>set_model_setting</code></td>
+<td>Settings persistence</td>
+<td><code>config.py</code></td>
+</tr>
+</tbody></table>
+<h2 id="state-management">State Management</h2>
+<table>
+<thead><tr>
+<th>State</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>view_mode</code></td>
+<td>str</td>
+<td>Current view (models/settings)</td>
+</tr>
+<tr>
+<td><code>selected_model</code></td>
+<td>str</td>
+<td>Currently selected model</td>
+</tr>
+<tr>
+<td><code>model_index</code></td>
+<td>int</td>
+<td>Selected model index</td>
+</tr>
+<tr>
+<td><code>setting_index</code></td>
+<td>int</td>
+<td>Selected setting index</td>
+</tr>
+<tr>
+<td><code>page</code></td>
+<td>int</td>
+<td>Current page number</td>
+</tr>
+<tr>
+<td><code>editing_mode</code></td>
+<td>bool</td>
+<td>Whether editing a setting</td>
+</tr>
+<tr>
+<td><code>edit_value</code></td>
+<td>any</td>
+<td>Value being edited</td>
+</tr>
+</tbody></table>
+<h2 id="data-flow">Data Flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant Menu
+    participant Config
+    participant ModelFactory
+    
+    User-&gt;&gt;Menu: Open settings
+    Menu-&gt;&gt;ModelFactory: Load models
+    ModelFactory--&gt;&gt;Menu: Model list
+    Menu-&gt;&gt;User: Display models
+    User-&gt;&gt;Menu: Select model
+    Menu-&gt;&gt;Config: Get model settings
+    Config--&gt;&gt;Menu: Settings data
+    Menu-&gt;&gt;User: Display settings
+    User-&gt;&gt;Menu: Adjust value
+    Menu-&gt;&gt;Config: Save setting
+    Config--&gt;&gt;Menu: Success
+    Menu-&gt;&gt;User: Confirmation
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Aspect</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Entry point</td>
+<td><code>code_puppy/command_line/model_settings_menu.py</code></td>
+<td><code>ModelSettingsMenu</code></td>
+</tr>
+<tr>
+<td>Model loading</td>
+<td><code>code_puppy/model_factory.py</code></td>
+<td><code>ModelFactory.load_config()</code></td>
+</tr>
+<tr>
+<td>Settings read</td>
+<td><code>code_puppy/config.py</code></td>
+<td><code>get_all_model_settings()</code></td>
+</tr>
+<tr>
+<td>Settings write</td>
+<td><code>code_puppy/config.py</code></td>
+<td><code>set_model_setting()</code></td>
+</tr>
+<tr>
+<td>Global settings</td>
+<td><code>code_puppy/config.py</code></td>
+<td><code>get_openai_*()</code> functions</td>
+</tr>
+</tbody></table>
+<h2 id="configurable-settings">Configurable Settings</h2>
+<h3 id="numeric-settings">Numeric Settings</h3>
+<table>
+<thead><tr>
+<th>Setting</th>
+<th>Range</th>
+<th>Step</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Temperature</td>
+<td>0.0-1.0</td>
+<td>0.05</td>
+<td>Model default</td>
+<td>Controls randomness</td>
+</tr>
+<tr>
+<td>Seed</td>
+<td>0-999999</td>
+<td>1</td>
+<td>Model default</td>
+<td>Reproducible outputs</td>
+</tr>
+<tr>
+<td>Top-P</td>
+<td>0.0-1.0</td>
+<td>0.05</td>
+<td>Model default</td>
+<td>Token diversity</td>
+</tr>
+<tr>
+<td>Thinking Budget</td>
+<td>1024-131072</td>
+<td>1024</td>
+<td>10000</td>
+<td>Max tokens for thinking</td>
+</tr>
+</tbody></table>
+<h3 id="choice-settings">Choice Settings</h3>
+<table>
+<thead><tr>
+<th>Setting</th>
+<th>Choices</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Reasoning Effort</td>
+<td>minimal, low, medium, high, xhigh</td>
+<td>medium</td>
+<td>Reasoning depth</td>
+</tr>
+<tr>
+<td>Verbosity</td>
+<td>low, medium, high, max</td>
+<td>medium</td>
+<td>Response length</td>
+</tr>
+<tr>
+<td>Extended Thinking</td>
+<td>enabled, adaptive, off</td>
+<td>enabled</td>
+<td>Thinking mode</td>
+</tr>
+<tr>
+<td>Interleaved Thinking</td>
+<td>true, false</td>
+<td>false</td>
+<td>Thinking between tool calls</td>
+</tr>
+<tr>
+<td>Clear Thinking</td>
+<td>true, false</td>
+<td>false</td>
+<td>Strip thinking from output</td>
+</tr>
+</tbody></table>
+<h3 id="model-specific-settings">Model-Specific Settings</h3>
+<table>
+<thead><tr>
+<th>Model Type</th>
+<th>Supported Settings</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>GPT-5</td>
+<td>Temperature, Seed, Top-P, Reasoning Effort, Verbosity</td>
+</tr>
+<tr>
+<td>Claude</td>
+<td>Temperature, Seed, Top-P, Extended Thinking, Interleaved Thinking</td>
+</tr>
+<tr>
+<td>Gemini</td>
+<td>Temperature, Seed, Thinking Enabled, Thinking Level</td>
+</tr>
+<tr>
+<td>Codex</td>
+<td>Temperature, Seed, Reasoning Effort (xhigh supported)</td>
+</tr>
+</tbody></table>
+<h2 id="keyboard-shortcuts">Keyboard Shortcuts</h2>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Model View</th>
+<th>Settings View</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>↑</td>
+<td>Navigate up</td>
+<td>Navigate up</td>
+</tr>
+<tr>
+<td>↓</td>
+<td>Navigate down</td>
+<td>Navigate down</td>
+</tr>
+<tr>
+<td>PgUp</td>
+<td>Previous page</td>
+<td>-</td>
+</tr>
+<tr>
+<td>PgDn</td>
+<td>Next page</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Enter</td>
+<td>Select model</td>
+<td>Save setting</td>
+</tr>
+<tr>
+<td>←</td>
+<td>-</td>
+<td>Decrease value</td>
+</tr>
+<tr>
+<td>→</td>
+<td>-</td>
+<td>Increase value</td>
+</tr>
+<tr>
+<td>Esc</td>
+<td>Exit</td>
+<td>Exit</td>
+</tr>
+</tbody></table>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Model support</strong>: Not all settings are available for all models. Unsupported settings are hidden.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Global vs per-model</strong>: Some settings (reasoning_effort, verbosity) have global defaults that apply if no per-model setting exists.</p>
+</div>
+<div class="callout callout-tip">
+<div class="callout-title">TIP</div>
+<p><strong>Reset to default</strong>: Set a setting to <code>None</code> to use the model's default value.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Invalid values</strong>: Values outside the valid range are clamped to min/max.</p>
+</div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/ModelConfiguration.html">Feature: Model Configuration</a></li>
+<li><a href="ModelPicker.html">View: Model Picker</a></li>
+<li><a href="../Concepts/ConfigurationManagement.html">Concept: Configuration Management</a></li>
+<li><a href="../Endpoints/GetConfigKey.html">Endpoint: GET /api/config/{key}</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

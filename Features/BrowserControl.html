@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: Browser Control — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="AgentCreation.html">Agent Creation</a>
+<a href="AgentSwitching.html">Agent Switching</a>
+<a href="BrowserControl.html" class="active">Browser Control</a>
+<a href="CustomSkills.html">Custom Skills</a>
+<a href="HookSystem.html">Hook System</a>
+<a href="JSONAgents.html">JSONAgents</a>
+<a href="MCPManagement.html">MCPManagement</a>
+<a href="MPCCatalog.html">MPCCatalog</a>
+<a href="ModelConfiguration.html">Model Configuration</a>
+<a href="ModelDiscovery.html">Model Discovery</a>
+<a href="PluginDevelopment.html">Plugin Development</a>
+<a href="PythonAgents.html">Python Agents</a>
+<a href="RoundRobinModels.html">Round Robin Models</a>
+<a href="SkillInstallation.html">Skill Installation</a>
+<a href="SkillUsage.html">Skill Usage</a>
+<a href="TaskScheduling.html">Task Scheduling</a>
+<a href="TerminalIntegration.html">Terminal Integration</a>
+<a href="UniversalConstructor.html">Universal Constructor</a>
+<a href="index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-browser-control">Feature: Browser Control</h1>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Browser Control provides <strong>terminal-based web automation</strong> capabilities, allowing agents to navigate websites, interact with page elements, extract content, and take screenshots - all through a headless Chromium browser powered by Playwright. This enables agents to perform web-based tasks like form filling, data extraction, testing web applications, and visual analysis of web pages.</p>
+<h2 id="why-does-this-exist">Why Does This Exist?</h2>
+<p>Many real-world tasks require web interaction:</p>
+<ul>
+<li><strong>Testing web applications</strong> - Verify UI behavior, check for regressions</li>
+<li><strong>Data extraction</strong> - Scrape information from websites that lack APIs</li>
+<li><strong>Form automation</strong> - Fill out online forms, submit applications</li>
+<li><strong>Visual validation</strong> - Take screenshots for comparison or analysis</li>
+<li><strong>Web research</strong> - Navigate and gather information from multiple sites</li>
+</ul>
+<p>The browser tools give agents the ability to <strong>see and interact with the web</strong> just like a human would, but faster and more reliably.</p>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<p>An agent can:</p>
+<ol>
+<li>Initialize a browser session</li>
+<li>Navigate to any URL</li>
+<li>Find elements by role, text, label, or selector</li>
+<li>Click, type, select options, check boxes</li>
+<li>Take screenshots for visual analysis</li>
+<li>Manage multiple pages/tabs</li>
+<li>Save and reuse automation workflows</li>
+</ol>
+<h3 id="system-perspective">System Perspective</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant Agent
+    participant Tools
+    participant BrowserManager
+    participant Playwright
+    participant Chromium
+    
+    Agent-&gt;&gt;Tools: browser_initialize()
+    Tools-&gt;&gt;BrowserManager: Get session manager
+    BrowserManager-&gt;&gt;Playwright: Launch persistent context
+    Playwright-&gt;&gt;Chromium: Start browser process
+    Chromium--&gt;&gt;Playwright: Browser ready
+    Playwright--&gt;&gt;BrowserManager: Context created
+    BrowserManager--&gt;&gt;Tools: Manager initialized
+    Tools--&gt;&gt;Agent: Success response
+    
+    Agent-&gt;&gt;Tools: browser_navigate(url)
+    Tools-&gt;&gt;BrowserManager: Get current page
+    BrowserManager-&gt;&gt;Playwright: page.goto(url)
+    Playwright-&gt;&gt;Chromium: Navigate
+    Chromium--&gt;&gt;Playwright: Page loaded
+    Playwright--&gt;&gt;BrowserManager: Page object
+    BrowserManager--&gt;&gt;Tools: Page info
+    Tools--&gt;&gt;Agent: Navigation result
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Responsibility</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><strong>Browser lifecycle</strong></td>
+<td><code>code_puppy/tools/browser/browser_manager.py</code></td>
+<td>Manages browser instances, profiles, cleanup</td>
+</tr>
+<tr>
+<td><strong>Navigation</strong></td>
+<td><code>code_puppy/tools/browser/browser_navigation.py</code></td>
+<td>URL navigation, history, reload</td>
+</tr>
+<tr>
+<td><strong>Element discovery</strong></td>
+<td><code>code_puppy/tools/browser/browser_locators.py</code></td>
+<td>Find by role, text, label, XPath</td>
+</tr>
+<tr>
+<td><strong>Element interaction</strong></td>
+<td><code>code_puppy/tools/browser/browser_interactions.py</code></td>
+<td>Click, type, select, check</td>
+</tr>
+<tr>
+<td><strong>Screenshots</strong></td>
+<td><code>code_puppy/tools/browser/browser_screenshot.py</code></td>
+<td>Capture with BinaryContent for multimodal analysis</td>
+</tr>
+<tr>
+<td><strong>Scripts &amp; advanced</strong></td>
+<td><code>code_puppy/tools/browser/browser_scripts.py</code></td>
+<td>JavaScript execution, scrolling, highlighting</td>
+</tr>
+<tr>
+<td><strong>Terminal integration</strong></td>
+<td><code>code_puppy/tools/browser/terminal_*.py</code></td>
+<td>Connect to remote terminals</td>
+</tr>
+<tr>
+<td><strong>Workflows</strong></td>
+<td><code>code_puppy/tools/browser/browser_workflows.py</code></td>
+<td>Save/load automation patterns</td>
+</tr>
+<tr>
+<td><strong>Tool registration</strong></td>
+<td><code>code_puppy/tools/__init__.py</code></td>
+<td><code>TOOL_REGISTRY</code> maps tool names to registration functions</td>
+</tr>
+</tbody></table>
+<h2 id="browser-session-management">Browser Session Management</h2>
+<h3 id="session-isolation">Session Isolation</h3>
+<p>Each agent session gets its <strong>own browser instance</strong> with isolated state:</p>
+<ul>
+<li>Separate profile directory under <code>XDG_CACHE_HOME/code_puppy/browser_profiles/&lt;session_id&gt;/</code></li>
+<li>Independent cookies, localStorage, session storage</li>
+<li>Supports <strong>parallel agent execution</strong> without interference</li>
+</ul>
+<h3 id="context-propagation">Context Propagation</h3>
+<pre><code class="language-python"># Context variable for browser session
+_browser_session_var: contextvars.ContextVar[Optional[str]]
+
+# Set before agent execution
+token = set_browser_session(session_id)
+try:
+    # Agent runs with this session
+    ...
+finally:
+    reset_browser_session(token)</code></pre>
+<h3 id="cleanup">Cleanup</h3>
+<ul>
+<li>Automatic cleanup on shutdown via <code>atexit</code> handler</li>
+<li>State saved to <code>storage_state.json</code> before close</li>
+<li>Persistent profiles allow resuming sessions</li>
+</ul>
+<h2 id="configuration">Configuration</h2>
+<table>
+<thead><tr>
+<th>Setting</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>BROWSER_HEADLESS</code></td>
+<td>Run browser without GUI</td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td><code>CACHE_DIR</code></td>
+<td>Base directory for browser profiles</td>
+<td><code>XDG_CACHE_HOME/code_puppy</code></td>
+</tr>
+</tbody></table>
+<h2 id="available-tools">Available Tools</h2>
+<h3 id="browser-lifecycle">Browser Lifecycle</h3>
+<table>
+<thead><tr>
+<th>Tool</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>browser_initialize</code></td>
+<td>Start browser with settings</td>
+</tr>
+<tr>
+<td><code>browser_close</code></td>
+<td>Shutdown and cleanup</td>
+</tr>
+<tr>
+<td><code>browser_status</code></td>
+<td>Check initialization state</td>
+</tr>
+<tr>
+<td><code>browser_new_page</code></td>
+<td>Create new tab</td>
+</tr>
+<tr>
+<td><code>browser_list_pages</code></td>
+<td>List all open tabs</td>
+</tr>
+</tbody></table>
+<h3 id="navigation">Navigation</h3>
+<table>
+<thead><tr>
+<th>Tool</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>browser_navigate</code></td>
+<td>Go to URL</td>
+</tr>
+<tr>
+<td><code>browser_get_page_info</code></td>
+<td>Get current URL/title</td>
+</tr>
+<tr>
+<td><code>browser_go_back</code></td>
+<td>History back</td>
+</tr>
+<tr>
+<td><code>browser_go_forward</code></td>
+<td>History forward</td>
+</tr>
+<tr>
+<td><code>browser_reload</code></td>
+<td>Reload page</td>
+</tr>
+<tr>
+<td><code>browser_wait_for_load</code></td>
+<td>Wait for load state</td>
+</tr>
+</tbody></table>
+<h3 id="element-discovery">Element Discovery</h3>
+<table>
+<thead><tr>
+<th>Tool</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>browser_find_by_role</code></td>
+<td>Find by ARIA role (recommended)</td>
+</tr>
+<tr>
+<td><code>browser_find_by_text</code></td>
+<td>Find by text content</td>
+</tr>
+<tr>
+<td><code>browser_find_by_label</code></td>
+<td>Find form elements by label</td>
+</tr>
+<tr>
+<td><code>browser_find_by_placeholder</code></td>
+<td>Find by placeholder text</td>
+</tr>
+<tr>
+<td><code>browser_find_by_test_id</code></td>
+<td>Find by data-testid</td>
+</tr>
+<tr>
+<td><code>browser_xpath_query</code></td>
+<td>XPath selector (fallback)</td>
+</tr>
+<tr>
+<td><code>browser_find_buttons</code></td>
+<td>List all buttons</td>
+</tr>
+<tr>
+<td><code>browser_find_links</code></td>
+<td>List all links</td>
+</tr>
+</tbody></table>
+<h3 id="element-interaction">Element Interaction</h3>
+<table>
+<thead><tr>
+<th>Tool</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>browser_click</code></td>
+<td>Click element</td>
+</tr>
+<tr>
+<td><code>browser_double_click</code></td>
+<td>Double-click element</td>
+</tr>
+<tr>
+<td><code>browser_hover</code></td>
+<td>Hover over element</td>
+</tr>
+<tr>
+<td><code>browser_set_text</code></td>
+<td>Fill input field</td>
+</tr>
+<tr>
+<td><code>browser_get_text</code></td>
+<td>Read element text</td>
+</tr>
+<tr>
+<td><code>browser_get_value</code></td>
+<td>Get input value</td>
+</tr>
+<tr>
+<td><code>browser_select_option</code></td>
+<td>Select dropdown option</td>
+</tr>
+<tr>
+<td><code>browser_check</code></td>
+<td>Check checkbox</td>
+</tr>
+<tr>
+<td><code>browser_uncheck</code></td>
+<td>Uncheck checkbox</td>
+</tr>
+</tbody></table>
+<h3 id="screenshots">Screenshots</h3>
+<table>
+<thead><tr>
+<th>Tool</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>browser_screenshot_analyze</code></td>
+<td>Capture screenshot with BinaryContent</td>
+</tr>
+</tbody></table>
+<h3 id="advanced">Advanced</h3>
+<table>
+<thead><tr>
+<th>Tool</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>browser_execute_js</code></td>
+<td>Run JavaScript</td>
+</tr>
+<tr>
+<td><code>browser_scroll</code></td>
+<td>Scroll page</td>
+</tr>
+<tr>
+<td><code>browser_scroll_to_element</code></td>
+<td>Scroll to element</td>
+</tr>
+<tr>
+<td><code>browser_set_viewport</code></td>
+<td>Set viewport size</td>
+</tr>
+<tr>
+<td><code>browser_wait_for_element</code></td>
+<td>Wait for element</td>
+</tr>
+<tr>
+<td><code>browser_highlight_element</code></td>
+<td>Highlight element visually</td>
+</tr>
+<tr>
+<td><code>browser_clear_highlights</code></td>
+<td>Clear all highlights</td>
+</tr>
+</tbody></table>
+<h3 id="workflows">Workflows</h3>
+<table>
+<thead><tr>
+<th>Tool</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>browser_save_workflow</code></td>
+<td>Save automation pattern</td>
+</tr>
+<tr>
+<td><code>browser_list_workflows</code></td>
+<td>List saved workflows</td>
+</tr>
+<tr>
+<td><code>browser_read_workflow</code></td>
+<td>Load workflow</td>
+</tr>
+</tbody></table>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Element selectors must be valid</strong> - Invalid selectors cause failures. Prefer semantic locators (role, label, text) over CSS/XPath when possible.</p>
+</div>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Headless mode is default</strong> - Set <code>BROWSER_HEADLESS=false</code> to see the browser window for debugging.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Screenshots use BinaryContent</strong> - The <code>browser_screenshot_analyze</code> tool returns images as <code>BinaryContent</code> so multimodal models can directly analyze them.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Profiles persist across runs</strong> - Browser state (cookies, localStorage) is saved and restored. Clear profile directory to reset.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Timeout defaults to 10 seconds</strong> - Slow pages may need <code>timeout</code> parameter increased.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead><tr>
+<th>Scenario</th>
+<th>Behavior</th>
+<th>User Sees</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Browser not initialized</td>
+<td>Tool returns error dict</td>
+<td><code>"error": "Browser not initialized"</code></td>
+</tr>
+<tr>
+<td>Element not found</td>
+<td>Wait times out</td>
+<td><code>"error": "Timeout 10000ms exceeded"</code></td>
+</tr>
+<tr>
+<td>Navigation fails</td>
+<td>Returns error with URL</td>
+<td><code>"error": "net::ERR_NAME_NOT_RESOLVED"</code></td>
+</tr>
+<tr>
+<td>Invalid selector</td>
+<td>Playwright throws</td>
+<td><code>"error": "Error: Strict mode violation"</code></td>
+</tr>
+</tbody></table>
+<h2 id="testing-this-feature">Testing This Feature</h2>
+<h3 id="manual-testing">Manual Testing</h3>
+<pre><code class="language-bash"># Set visible browser for debugging
+export BROWSER_HEADLESS=false
+
+# Run code_puppy
+uv run code_puppy
+
+# In agent, try:
+browser_initialize(headless=false)
+browser_navigate(url="https://example.com")
+browser_screenshot_analyze()</code></pre>
+<h3 id="tool-testing">Tool Testing</h3>
+<pre><code class="language-bash"># Run browser tool tests
+pytest tests/tools/browser/ -v</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Concepts/ToolRegistration.html">Concept: Tool Registration</a> - How tools are registered</li>
+<li><a href="TerminalIntegration.html">Feature: Terminal Integration</a> - Terminal automation companion</li>
+<li><a href="../Flows/ToolCallExecution.html">Flow: Tool Call Execution</a> - How tools execute</li>
+<li><a href="../Guides/CreateHooks.html">Guide: Create Hooks</a> - Extend browser behavior via plugins</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

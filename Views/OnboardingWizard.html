@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>View: Onboarding Wizard — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="AgentPicker.html">Agent Picker</a>
+<a href="DiffMenu.html">Diff Menu</a>
+<a href="MCPManager.html">MCPManager</a>
+<a href="MainCLI.html">Main CLI</a>
+<a href="ModelPicker.html">Model Picker</a>
+<a href="ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="OnboardingWizard.html" class="active">Onboarding Wizard</a>
+<a href="SkillsMenu.html">Skills Menu</a>
+<a href="TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="view-onboarding-wizard">View: Onboarding Wizard</h1>
+<h2 id="overview">Overview</h2>
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Route</td>
+<td>First run / <code>/tutorial</code> command</td>
+</tr>
+<tr>
+<td>Auth Required</td>
+<td>N/A (local CLI)</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Full-screen single panel</td>
+</tr>
+</tbody></table>
+<h2 id="what-does-this-view-do">What Does This View Do?</h2>
+<p>The Onboarding Wizard is a 5-slide interactive tutorial that guides first-time users through Code Puppy setup. It helps users select their preferred AI model, understand available features, and optionally configure OAuth authentication. The wizard is ADHD-friendly with clear visual progress indicators and simple navigation.</p>
+<h2 id="screenshot-wireframe">Screenshot/Wireframe</h2>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│                    🐶 Code Puppy Tutorial                           │
+│                                                                     │
+│                          ● ○ ○ ○ ○                                  │
+│                      Slide 1 of 5                                   │
+│                                                                     │
+│                    Welcome to Code Puppy! 🐶                        │
+│                                                                     │
+│   Code Puppy is your AI pair programmer that helps you:            │
+│                                                                     │
+│   • Write code faster with AI assistance                           │
+│   • Automate repetitive tasks                                      │
+│   • Manage multiple AI models                                      │
+│   • Extend functionality with plugins and skills                   │
+│                                                                     │
+│   Press → or Enter to continue                                     │
+│   Press ESC to skip                                                │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘</code></pre>
+<h2 id="user-actions">User Actions</h2>
+<table>
+<thead><tr>
+<th>Action</th>
+<th>Trigger</th>
+<th>Result</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Next slide</td>
+<td>→ / Enter / l</td>
+<td>Advance to next slide</td>
+</tr>
+<tr>
+<td>Previous slide</td>
+<td>← / h</td>
+<td>Go to previous slide</td>
+</tr>
+<tr>
+<td>Select option</td>
+<td>↓ / j / Ctrl+N</td>
+<td>Move selection down</td>
+</tr>
+<tr>
+<td>Select option</td>
+<td>↑ / k / Ctrl+P</td>
+<td>Move selection up</td>
+</tr>
+<tr>
+<td>Skip wizard</td>
+<td>ESC</td>
+<td>Exit without setup</td>
+</tr>
+<tr>
+<td>Cancel</td>
+<td>Ctrl+C</td>
+<td>Exit without setup</td>
+</tr>
+</tbody></table>
+<h2 id="slide-sequence">Slide Sequence</h2>
+<pre class="mermaid">
+flowchart LR
+    A[Welcome] --&gt; B[Model Selection]
+    B --&gt; C[MCP Servers]
+    C --&gt; D[Use Cases]
+    D --&gt; E[Done]
+</pre>
+<h3 id="slide-1-welcome">Slide 1: Welcome</h3>
+<ul>
+<li>Introduction to Code Puppy</li>
+<li>Key features overview</li>
+<li>Navigation hints</li>
+</ul>
+<h3 id="slide-2-model-selection">Slide 2: Model Selection</h3>
+<ul>
+<li>Choose default AI model provider</li>
+<li>Options: ChatGPT, Claude, or skip</li>
+<li>Triggers OAuth setup if selected</li>
+</ul>
+<h3 id="slide-3-mcp-servers">Slide 3: MCP Servers</h3>
+<ul>
+<li>Explanation of Model Context Protocol</li>
+<li>Benefits of MCP servers</li>
+<li>Can be configured later</li>
+</ul>
+<h3 id="slide-4-use-cases">Slide 4: Use Cases</h3>
+<ul>
+<li>Planning vs Coding modes</li>
+<li>When to use each</li>
+<li>Best practices</li>
+</ul>
+<h3 id="slide-5-done">Slide 5: Done!</h3>
+<ul>
+<li>Summary of choices</li>
+<li>Next steps</li>
+<li>OAuth setup link (if applicable)</li>
+</ul>
+<h2 id="progress-indicator">Progress Indicator</h2>
+<table>
+<thead><tr>
+<th>Format</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>● ○ ○ ○ ○</code></td>
+<td>Slide 1 of 5 (current)</td>
+</tr>
+<tr>
+<td><code>○ ● ○ ○ ○</code></td>
+<td>Slide 2 of 5 (current)</td>
+</tr>
+<tr>
+<td><code>○ ○ ● ○ ○</code></td>
+<td>Slide 3 of 5 (current)</td>
+</tr>
+<tr>
+<td><code>○ ○ ○ ● ○</code></td>
+<td>Slide 4 of 5 (current)</td>
+</tr>
+<tr>
+<td><code>○ ○ ○ ○ ●</code></td>
+<td>Slide 5 of 5 (current)</td>
+</tr>
+</tbody></table>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Aspect</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Entry point</td>
+<td><code>code_puppy/command_line/onboarding_wizard.py</code></td>
+<td><code>run_onboarding_wizard()</code></td>
+</tr>
+<tr>
+<td>Slide content</td>
+<td><code>code_puppy/command_line/onboarding_slides.py</code></td>
+<td>Individual slide functions</td>
+</tr>
+<tr>
+<td>State tracking</td>
+<td><code>code_puppy/command_line/onboarding_wizard.py</code></td>
+<td><code>OnboardingWizard</code> class</td>
+</tr>
+<tr>
+<td>Completion marker</td>
+<td><code>~/.code_puppy/onboarding_complete</code></td>
+<td>Skip on subsequent runs</td>
+</tr>
+</tbody></table>
+<h2 id="state-management">State Management</h2>
+<table>
+<thead><tr>
+<th>State</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>current_slide</code></td>
+<td>int</td>
+<td>Current slide index (0-4)</td>
+</tr>
+<tr>
+<td><code>selected_option</code></td>
+<td>int</td>
+<td>Selected option on slide</td>
+</tr>
+<tr>
+<td><code>trigger_oauth</code></td>
+<td>str</td>
+<td>OAuth provider if selected</td>
+</tr>
+<tr>
+<td><code>model_choice</code></td>
+<td>str</td>
+<td>User's model selection</td>
+</tr>
+<tr>
+<td><code>result</code></td>
+<td>str</td>
+<td>Final result (completed/skipped)</td>
+</tr>
+</tbody></table>
+<h2 id="data-flow">Data Flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant Wizard
+    participant Config
+    participant OAuth
+    
+    User-&gt;&gt;Wizard: First run
+    Wizard-&gt;&gt;Wizard: Show welcome slide
+    User-&gt;&gt;Wizard: Navigate slides
+    alt Model selected
+        User-&gt;&gt;Wizard: Select ChatGPT/Claude
+        Wizard-&gt;&gt;OAuth: Trigger OAuth flow
+        OAuth--&gt;&gt;Wizard: OAuth result
+        Wizard-&gt;&gt;Config: Save model choice
+    end
+    User-&gt;&gt;Wizard: Complete wizard
+    Wizard-&gt;&gt;Config: Mark onboarding complete
+    Config--&gt;&gt;Wizard: Success
+    Wizard--&gt;&gt;User: Return to CLI
+</pre>
+<h2 id="command-line-interface">Command Line Interface</h2>
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>First run</td>
+<td>Automatic on first execution</td>
+</tr>
+<tr>
+<td><code>/tutorial</code></td>
+<td>Re-run onboarding wizard</td>
+</tr>
+</tbody></table>
+<h2 id="completion-states">Completion States</h2>
+<table>
+<thead><tr>
+<th>State</th>
+<th>Marker File</th>
+<th>Result</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Completed</td>
+<td><code>~/.code_puppy/onboarding_complete</code></td>
+<td>"completed"</td>
+</tr>
+<tr>
+<td>Skipped</td>
+<td>None</td>
+<td>"skipped"</td>
+</tr>
+<tr>
+<td>OAuth selected</td>
+<td><code>~/.code_puppy/onboarding_complete</code></td>
+<td>"chatgpt" or "claude"</td>
+</tr>
+</tbody></table>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>One-time only</strong>: The wizard only shows on first run. Use <code>/tutorial</code> to re-run.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Skip option</strong>: Users can press ESC at any time to skip the wizard.</p>
+</div>
+<div class="callout callout-tip">
+<div class="callout-title">TIP</div>
+<p><strong>Reset onboarding</strong>: Delete <code>~/.code_puppy/onboarding_complete</code> to re-run the wizard.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>OAuth triggers</strong>: Selecting ChatGPT or Claude triggers OAuth flow immediately.</p>
+</div>
+<h2 id="environment-variables">Environment Variables</h2>
+<table>
+<thead><tr>
+<th>Variable</th>
+<th>Purpose</th>
+<th>Values</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>CODE_PUPPY_SKIP_TUTORIAL</code></td>
+<td>Skip onboarding</td>
+<td>"1", "true", "yes"</td>
+</tr>
+</tbody></table>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Flows/FirstTimeSetup.html">Flow: First-Time Setup</a></li>
+<li><a href="../Features/ModelConfiguration.html">Feature: Model Configuration</a></li>
+<li><a href="../Concepts/ConfigurationManagement.html">Concept: Configuration Management</a></li>
+<li><a href="../Guides/GettingStarted.html">Guide: Getting Started</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

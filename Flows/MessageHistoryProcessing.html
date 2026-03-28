@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow: Message History Processing — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="AddingAModel.html">Adding AModel</a>
+<a href="AgentExecution.html">Agent Execution</a>
+<a href="FirstTimeSetup.html">First Time Setup</a>
+<a href="InstallingASkill.html">Installing ASkill</a>
+<a href="MessageHistoryProcessing.html" class="active">Message History Processing</a>
+<a href="PluginLoading.html">Plugin Loading</a>
+<a href="RunningATask.html">Running ATask</a>
+<a href="StreamEventProcessing.html">Stream Event Processing</a>
+<a href="ToolCallExecution.html">Tool Call Execution</a>
+<a href="index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="flow-message-history-processing">Flow: Message History Processing</h1>
+<h2 id="what-happens">What Happens?</h2>
+<p>When an agent receives new messages during execution, the message history processing flow manages the conversation history to prevent token limit exhaustion while preserving context. This includes deduplication, compaction (summarization or truncation), and filtering of invalid messages.</p>
+<h2 id="trigger">Trigger</h2>
+<ul>
+<li><strong>When</strong>: Every time the agent receives new messages from pydantic-ai</li>
+<li><strong>Where</strong>: <code>message_history_accumulator</code> hook in <code>base_agent.py</code></li>
+<li><strong>Context</strong>: During agent execution, after model response but before next turn</li>
+</ul>
+<h2 id="outcome">Outcome</h2>
+<ul>
+<li>Deduplicated message history with no duplicate messages</li>
+<li>Token usage managed via compaction when threshold exceeded</li>
+<li>Invalid messages (empty thinking parts, interrupted tool calls) filtered out</li>
+<li>Message history always ends with a <code>ModelRequest</code> (user prompt)</li>
+<li>Callbacks fired for observability and plugin extension</li>
+</ul>
+<h2 id="step-by-step">Step-by-Step</h2>
+<pre class="mermaid">
+flowchart TD
+    A[New Messages Arrive] --&gt; B[message_history_accumulator]
+    B --&gt; C[Fire on_message_history_processor_start]
+    C --&gt; D[Calculate Message Hashes]
+    D --&gt; E{Duplicate?}
+    E --&gt;|Yes| F[Skip Unless Last Message]
+    E --&gt;|No| G[Add to History]
+    F --&gt; H
+    G --&gt; H[Call message_history_processor]
+    H --&gt; I[Calculate Token Usage]
+    I --&gt; J{Over Threshold?}
+    J --&gt;|No| K[Filter Empty Thinking Parts]
+    J --&gt;|Yes| L{Strategy?}
+    L --&gt;|Truncation| M[Truncate Recent Messages]
+    L --&gt;|Summarization| N{Pending Tool Calls?}
+    N --&gt;|Yes| O[Defer Compaction]
+    N --&gt;|No| P[Summarize Older Messages]
+    M --&gt; Q[Track Dropped Hashes]
+    P --&gt; Q
+    O --&gt; R[Return Original Messages]
+    Q --&gt; K
+    K --&gt; S[Ensure History Ends with Request]
+    S --&gt; T[Fire on_message_history_processor_end]
+    T --&gt; U[Return Processed History]
+</pre>
+<h3 id="1-message-accumulation">1. Message Accumulation</h3>
+<ul>
+<li><strong>What</strong>: New messages from pydantic-ai are received and deduplicated</li>
+<li><strong>Where</strong>: <code>message_history_accumulator</code> in <code>code_puppy/agents/base_agent.py:1560-1604</code></li>
+<li><strong>Failure mode</strong>: If deduplication fails, duplicate messages could accumulate</li>
+</ul>
+<p><strong>Deduplication Logic:</strong></p>
+<pre><code class="language-python">message_history_hashes = set([self.hash_message(m) for m in _message_history])
+for i, msg in enumerate(messages):
+    msg_hash = self.hash_message(msg)
+    if msg_hash not in message_history_hashes:
+        # Always preserve the last message (user's new prompt) even if duplicate
+        if i == last_msg_index or msg_hash not in self.get_compacted_message_hashes():
+            _message_history.append(msg)</code></pre>
+<p><strong>Special Rules:</strong></p>
+<ul>
+<li>Last message (user prompt) is always added, even if hash matches</li>
+<li>This prevents "ghost task" bug where short prompts like "yes" collide with compacted messages</li>
+</ul>
+<h3 id="2-token-usage-calculation">2. Token Usage Calculation</h3>
+<ul>
+<li><strong>What</strong>: Calculate current token usage and compare to model limit</li>
+<li><strong>Where</strong>: <code>message_history_processor</code> in <code>code_puppy/agents/base_agent.py:1035-1105</code></li>
+<li><strong>Failure mode</strong>: Incorrect token estimation could trigger premature compaction</li>
+</ul>
+<p><strong>Token Calculation:</strong></p>
+<pre><code class="language-python">message_tokens = sum(self.estimate_tokens_for_message(msg) for msg in messages)
+context_overhead = self.estimate_context_overhead_tokens()
+total_current_tokens = message_tokens + context_overhead
+proportion_used = total_current_tokens / model_max</code></pre>
+<h3 id="3-compaction-decision">3. Compaction Decision</h3>
+<ul>
+<li><strong>What</strong>: Determine if compaction is needed based on threshold</li>
+<li><strong>Where</strong>: <code>message_history_processor</code> in <code>code_puppy/agents/base_agent.py:1055-1065</code></li>
+<li><strong>Failure mode</strong>: If threshold misconfigured, could compaction too aggressively or not at all</li>
+</ul>
+<p><strong>Configuration:</strong></p>
+<table>
+<thead><tr>
+<th>Setting</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>compaction_threshold</code></td>
+<td>When to trigger compaction (0.0-1.0)</td>
+<td>0.8 (80%)</td>
+</tr>
+<tr>
+<td><code>compaction_strategy</code></td>
+<td>How to compact: <code>summarization</code> or <code>truncation</code></td>
+<td><code>summarization</code></td>
+</tr>
+<tr>
+<td><code>protected_tokens</code></td>
+<td>Tokens to protect from truncation</td>
+<td>4000</td>
+</tr>
+</tbody></table>
+<h3 id="4-pending-tool-call-protection">4. Pending Tool Call Protection</h3>
+<ul>
+<li><strong>What</strong>: Check for incomplete tool calls before summarization</li>
+<li><strong>Where</strong>: <code>message_history_processor</code> in <code>code_puppy/agents/base_agent.py:1065-1075</code></li>
+<li><strong>Failure mode</strong>: Summarizing mid-tool-call would break tool execution</li>
+</ul>
+<p><strong>Race Condition Protection:</strong></p>
+<pre><code class="language-python">if compaction_strategy == "summarization" and self.has_pending_tool_calls(messages):
+    pending_count = self.get_pending_tool_call_count(messages)
+    emit_warning(f"⚠️  Summarization deferred: {pending_count} pending tool call(s)")
+    self.request_delayed_compaction()
+    return messages  # Return original, defer compaction</code></pre>
+<h3 id="5-compaction-execution">5. Compaction Execution</h3>
+<ul>
+<li><strong>What</strong>: Apply configured compaction strategy</li>
+<li><strong>Where</strong>: <code>code_puppy/agents/base_agent.py:1075-1095</code></li>
+<li><strong>Failure mode</strong>: Summarization LLM call could fail</li>
+</ul>
+<p><strong>Truncation Strategy:</strong></p>
+<pre><code class="language-python">if compaction_strategy == "truncation":
+    protected_tokens = get_protected_token_count()
+    filtered_messages = self.filter_huge_messages(messages)
+    result_messages = self.truncation(filtered_messages, protected_tokens)
+    # Track dropped hashes to prevent re-injection</code></pre>
+<p><strong>Summarization Strategy:</strong></p>
+<pre><code class="language-python">else:
+    result_messages, summarized_messages = self.summarize_messages(
+        self.filter_huge_messages(messages)
+    )
+    # Add summarized message hashes to compacted set
+    for m in summarized_messages:
+        self.add_compacted_message_hash(self.hash_message(m))</code></pre>
+<h3 id="6-message-filtering">6. Message Filtering</h3>
+<ul>
+<li><strong>What</strong>: Remove invalid message structures</li>
+<li><strong>Where</strong>: <code>message_history_accumulator</code> in <code>code_puppy/agents/base_agent.py:1604-1625</code></li>
+<li><strong>Failure mode</strong>: Invalid messages could cause API errors</li>
+</ul>
+<p><strong>Filtering Rules:</strong></p>
+<ul>
+<li>Single-part messages with empty <code>ThinkingPart</code> → removed entirely</li>
+<li>Multi-part messages with empty <code>ThinkingPart</code> → strip empty part, keep message</li>
+<li>Ensure history ends with <code>ModelRequest</code> (not <code>ModelResponse</code>)</li>
+</ul>
+<h3 id="7-callback-notification">7. Callback Notification</h3>
+<ul>
+<li><strong>What</strong>: Fire end callback with processing statistics</li>
+<li><strong>Where</strong>: <code>message_history_accumulator</code> in <code>code_puppy/agents/base_agent.py:1638-1648</code></li>
+<li><strong>Failure mode</strong>: Plugin errors could crash agent (should be caught by plugin engine)</li>
+</ul>
+<p><strong>Callback Signature:</strong></p>
+<pre><code class="language-python">on_message_history_processor_end(
+    agent_name=self.name,
+    session_id=getattr(self, "session_id", None),
+    message_history=list(final_history),
+    messages_added=messages_added,
+    messages_filtered=messages_filtered,
+)</code></pre>
+<h2 id="data-transformations">Data Transformations</h2>
+<table>
+<thead><tr>
+<th>Stage</th>
+<th>Input</th>
+<th>Output</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Deduplication</td>
+<td>Raw messages from pydantic-ai</td>
+<td>Deduplicated message list</td>
+<td><code>message_history_accumulator</code></td>
+</tr>
+<tr>
+<td>Token Check</td>
+<td>Message list</td>
+<td>Token count + proportion</td>
+<td><code>message_history_processor</code></td>
+</tr>
+<tr>
+<td>Compaction</td>
+<td>Messages over threshold</td>
+<td>Compacted message list</td>
+<td><code>summarize_messages</code> / <code>truncation</code></td>
+</tr>
+<tr>
+<td>Filtering</td>
+<td>Message list</td>
+<td>Validated message list</td>
+<td><code>message_history_accumulator</code></td>
+</tr>
+</tbody></table>
+<h2 id="failure-handling">Failure Handling</h2>
+<table>
+<thead><tr>
+<th>Failure Point</th>
+<th>Detection</th>
+<th>Recovery</th>
+<th>Alert?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Summarization LLM error</td>
+<td><code>SummarizationError</code> exception</td>
+<td>Return original messages (no compaction)</td>
+<td>Yes (emit_error)</td>
+</tr>
+<tr>
+<td>Token estimation error</td>
+<td>Exception in <code>estimate_tokens_for_message</code></td>
+<td>Skip compaction, continue</td>
+<td>Yes (emit_error)</td>
+</tr>
+<tr>
+<td>Pending tool calls</td>
+<td><code>has_pending_tool_calls()</code> returns True</td>
+<td>Defer compaction, set flag</td>
+<td>Yes (emit_warning)</td>
+</tr>
+<tr>
+<td>Invalid message structure</td>
+<td>Empty ThinkingPart detected</td>
+<td>Filter out during accumulation</td>
+<td>No (silent)</td>
+</tr>
+</tbody></table>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Typical duration</strong>: &lt;100ms for deduplication + filtering</li>
+<li><strong>Summarization duration</strong>: 5-30 seconds (depends on message count and LLM latency)</li>
+<li><strong>Bottlenecks</strong>: Summarization LLM call (if triggered)</li>
+<li><strong>Scaling considerations</strong>: More messages = longer summarization time</li>
+</ul>
+<h2 id="debugging-this-flow">Debugging This Flow</h2>
+<h3 id="key-log-messages">Key Log Messages</h3>
+<table>
+<thead><tr>
+<th>Message</th>
+<th>Meaning</th>
+<th>Action</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>🔒 Protecting X recent messages</code></td>
+<td>Compaction in progress, recent messages preserved</td>
+<td>Check if compaction is too aggressive</td>
+</tr>
+<tr>
+<td><code>📝 Summarizing X older messages</code></td>
+<td>Summarization triggered</td>
+<td>Normal behavior</td>
+</tr>
+<tr>
+<td><code>⚠️ Summarization deferred: X pending tool call(s)</code></td>
+<td>Race condition protection active</td>
+<td>Normal - will retry later</td>
+</tr>
+<tr>
+<td><code>Truncating message history</code></td>
+<td>Truncation strategy active</td>
+<td>Check <code>compaction_strategy</code> config</td>
+</tr>
+<tr>
+<td><code>Summarization failed: ...</code></td>
+<td>Summarization LLM error</td>
+<td>Check model config, try <code>truncation</code> strategy</td>
+</tr>
+</tbody></table>
+<h3 id="common-issues">Common Issues</h3>
+<h4 id="issue-ghost-tasks-after-compaction">Issue: Ghost Tasks After Compaction</h4>
+<p><strong>Symptom</strong>: Agent re-runs same task after compaction <strong>Likely Cause</strong>: Short user prompts (e.g., "yes") hash-collide with compacted messages <strong>Fix</strong>: Last message is always preserved (already implemented in v2.0+)</p>
+<h4 id="issue-summarization-fails-repeatedly">Issue: Summarization Fails Repeatedly</h4>
+<p><strong>Symptom</strong>: <code>SummarizationError</code> in logs, compaction doesn't happen <strong>Likely Cause</strong>: Summarization model unavailable or context too large <strong>Fix</strong>: Switch to truncation: <code>/set compaction_strategy=truncation</code></p>
+<h4 id="issue-agent-loses-context-too-aggressively">Issue: Agent Loses Context Too Aggressively</h4>
+<p><strong>Symptom</strong>: Agent forgets important details after compaction <strong>Likely Cause</strong>: <code>compaction_threshold</code> too low or <code>protected_tokens</code> too small <strong>Fix</strong>: Increase threshold: <code>/set compaction_threshold=0.9</code> or increase protected tokens</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/AgentCreation.html">Feature: Agent Creation</a> - How agents are configured</li>
+<li><a href="../Concepts/CallbackSystem.html">Concept: Callback System</a> - How hooks work</li>
+<li><a href="AgentExecution.html">Flow: Agent Execution</a> - Full agent lifecycle</li>
+<li><a href="../Concepts/AgentArchitecture.html">Concept: Agent Architecture</a> - Agent internals</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

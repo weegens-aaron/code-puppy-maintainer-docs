@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>View: Diff Menu — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="AgentPicker.html">Agent Picker</a>
+<a href="DiffMenu.html" class="active">Diff Menu</a>
+<a href="MCPManager.html">MCPManager</a>
+<a href="MainCLI.html">Main CLI</a>
+<a href="ModelPicker.html">Model Picker</a>
+<a href="ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="OnboardingWizard.html">Onboarding Wizard</a>
+<a href="SkillsMenu.html">Skills Menu</a>
+<a href="TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="view-diff-menu">View: Diff Menu</h1>
+<h2 id="overview">Overview</h2>
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Route</td>
+<td><code>/diff</code> (slash command)</td>
+</tr>
+<tr>
+<td>Auth Required</td>
+<td>N/A (local CLI)</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Split-panel (menu/preview)</td>
+</tr>
+</tbody></table>
+<h2 id="what-does-this-view-do">What Does This View Do?</h2>
+<p>The Diff Menu provides an interactive terminal UI for configuring diff display colors and previewing diff formats. Users can customize the colors used for additions and deletions in diff output, and preview how diffs will look for various programming languages.</p>
+<h2 id="screenshot-wireframe">Screenshot/Wireframe</h2>
+<pre><code>┌────────────────────────────────┬──────────────────────────────────────────────┐
+│ Diff Color Configuration       │  📄 Preview: calculator.py (Python)          │
+│                                │                                              │
+│  › Configure Addition Color    │  --- a/calculator.py                         │
+│    Configure Deletion Color    │  +++ b/calculator.py                         │
+│    Save &amp; Exit                 │  @@ -1,12 +1,15 @@                          │
+│                                │   def calculate_total(items, tax_rate=0.08): │
+│                                │  +    # Calculate total price                │
+│                                │  +    total = 0                              │
+│                                │  +    for item in items:                     │
+│                                │  +        total += item['price']             │
+│                                │  -    # Calculate subtotal with discount     │
+│                                │  -    subtotal = sum(item['price']...        │
+│                                │                                              │
+│                                │  ↑/↓ Navigate  ←/→ Language                  │
+│                                │  Enter Select  Esc Back                      │
+│                                │                                              │
+└────────────────────────────────┴──────────────────────────────────────────────┘</code></pre>
+<h2 id="user-actions">User Actions</h2>
+<table>
+<thead><tr>
+<th>Action</th>
+<th>Trigger</th>
+<th>Result</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Navigate up</td>
+<td>↑</td>
+<td>Move selection up</td>
+</tr>
+<tr>
+<td>Navigate down</td>
+<td>↓</td>
+<td>Move selection down</td>
+</tr>
+<tr>
+<td>Previous language</td>
+<td>←</td>
+<td>Cycle to previous language</td>
+</tr>
+<tr>
+<td>Next language</td>
+<td>→</td>
+<td>Cycle to next language</td>
+</tr>
+<tr>
+<td>Select</td>
+<td>Enter</td>
+<td>Open submenu or save</td>
+</tr>
+<tr>
+<td>Back</td>
+<td>Esc</td>
+<td>Return to previous menu</td>
+</tr>
+</tbody></table>
+<h2 id="page-structure">Page Structure</h2>
+<pre class="mermaid">
+flowchart TD
+    subgraph MainMenu["Main Menu"]
+        AdditionColor["Configure Addition Color"]
+        DeletionColor["Configure Deletion Color"]
+        SaveExit["Save &amp; Exit"]
+    end
+    
+    subgraph ColorMenu["Color Selection Menu"]
+        ColorList[Color Options]
+        ColorPreview[Color Preview]
+    end
+    
+    subgraph Preview["Preview Panel"]
+        LanguagePreview[Language Sample]
+        DiffFormat[Diff Format]
+    end
+    
+    MainMenu --&gt;|Select| ColorMenu
+    ColorMenu --&gt;|Esc| MainMenu
+    Preview -.-&gt;|Live| MainMenu
+</pre>
+<h2 id="components-used">Components Used</h2>
+<table>
+<thead><tr>
+<th>Component</th>
+<th>Purpose</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>FormattedTextControl</code></td>
+<td>Styled text rendering</td>
+<td><code>prompt_toolkit.layout.controls</code></td>
+</tr>
+<tr>
+<td><code>VSplit</code></td>
+<td>Split-panel layout</td>
+<td><code>prompt_toolkit.layout</code></td>
+</tr>
+<tr>
+<td><code>Frame</code></td>
+<td>Panel borders/titles</td>
+<td><code>prompt_toolkit.widgets</code></td>
+</tr>
+<tr>
+<td><code>Application</code></td>
+<td>TUI application</td>
+<td><code>prompt_toolkit</code></td>
+</tr>
+</tbody></table>
+<h2 id="state-management">State Management</h2>
+<table>
+<thead><tr>
+<th>State</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>current_add_color</code></td>
+<td>str</td>
+<td>Addition color (e.g., "green")</td>
+</tr>
+<tr>
+<td><code>current_del_color</code></td>
+<td>str</td>
+<td>Deletion color (e.g., "red")</td>
+</tr>
+<tr>
+<td><code>original_add_color</code></td>
+<td>str</td>
+<td>Original addition color</td>
+</tr>
+<tr>
+<td><code>original_del_color</code></td>
+<td>str</td>
+<td>Original deletion color</td>
+</tr>
+<tr>
+<td><code>current_language_index</code></td>
+<td>int</td>
+<td>Selected language index</td>
+</tr>
+</tbody></table>
+<h2 id="data-flow">Data Flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant Menu
+    participant Config
+    participant Preview
+    
+    User-&gt;&gt;Menu: Open diff menu
+    Menu-&gt;&gt;Config: Load current colors
+    Config--&gt;&gt;Menu: Color settings
+    Menu-&gt;&gt;User: Display menu
+    User-&gt;&gt;Menu: Select color option
+    Menu-&gt;&gt;User: Show color picker
+    User-&gt;&gt;Menu: Choose color
+    Menu-&gt;&gt;Config: Save color
+    Config--&gt;&gt;Menu: Success
+    Menu-&gt;&gt;Preview: Update preview
+    Preview--&gt;&gt;User: Show updated diff
+    User-&gt;&gt;Menu: Save changes
+    Menu-&gt;&gt;Config: Persist settings
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Aspect</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Entry point</td>
+<td><code>code_puppy/command_line/diff_menu.py</code></td>
+<td><code>interactive_diff_picker()</code></td>
+</tr>
+<tr>
+<td>Menu rendering</td>
+<td><code>code_puppy/command_line/diff_menu.py</code></td>
+<td><code>_split_panel_selector()</code></td>
+</tr>
+<tr>
+<td>Color config</td>
+<td><code>code_puppy/config.py</code></td>
+<td><code>get_diff_*_color()</code></td>
+</tr>
+<tr>
+<td>Language samples</td>
+<td><code>code_puppy/command_line/diff_menu.py</code></td>
+<td><code>LANGUAGE_SAMPLES</code></td>
+</tr>
+<tr>
+<td>Language list</td>
+<td><code>code_puppy/command_line/diff_menu.py</code></td>
+<td><code>SUPPORTED_LANGUAGES</code></td>
+</tr>
+</tbody></table>
+<h2 id="supported-languages">Supported Languages</h2>
+<table>
+<thead><tr>
+<th>Language</th>
+<th>File Extension</th>
+<th>Sample File</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Python</td>
+<td>.py</td>
+<td>calculator.py</td>
+</tr>
+<tr>
+<td>JavaScript</td>
+<td>.js</td>
+<td>app.js</td>
+</tr>
+<tr>
+<td>TypeScript</td>
+<td>.ts</td>
+<td>service.ts</td>
+</tr>
+<tr>
+<td>Rust</td>
+<td>.rs</td>
+<td>main.rs</td>
+</tr>
+<tr>
+<td>Go</td>
+<td>.go</td>
+<td>handler.go</td>
+</tr>
+<tr>
+<td>Java</td>
+<td>.java</td>
+<td>Calculator.java</td>
+</tr>
+<tr>
+<td>Ruby</td>
+<td>.rb</td>
+<td>calculator.rb</td>
+</tr>
+<tr>
+<td>C#</td>
+<td>.cs</td>
+<td>Calculator.cs</td>
+</tr>
+<tr>
+<td>PHP</td>
+<td>.php</td>
+<td>Calculator.php</td>
+</tr>
+<tr>
+<td>HTML</td>
+<td>.html</td>
+<td>index.html</td>
+</tr>
+<tr>
+<td>CSS</td>
+<td>.css</td>
+<td>styles.css</td>
+</tr>
+<tr>
+<td>JSON</td>
+<td>.json</td>
+<td>config.json</td>
+</tr>
+<tr>
+<td>YAML</td>
+<td>.yml</td>
+<td>config.yml</td>
+</tr>
+<tr>
+<td>Bash</td>
+<td>.sh</td>
+<td>deploy.sh</td>
+</tr>
+<tr>
+<td>SQL</td>
+<td>.sql</td>
+<td>schema.sql</td>
+</tr>
+</tbody></table>
+<h2 id="color-configuration">Color Configuration</h2>
+<table>
+<thead><tr>
+<th>Setting</th>
+<th>Default</th>
+<th>Options</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Addition color</td>
+<td>green</td>
+<td>Any prompt_toolkit color</td>
+<td>Color for added lines</td>
+</tr>
+<tr>
+<td>Deletion color</td>
+<td>red</td>
+<td>Any prompt_toolkit color</td>
+<td>Color for removed lines</td>
+</tr>
+</tbody></table>
+<h2 id="keyboard-shortcuts">Keyboard Shortcuts</h2>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Action</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>↑/↓</td>
+<td>Navigate menu</td>
+</tr>
+<tr>
+<td>←/→</td>
+<td>Cycle languages</td>
+</tr>
+<tr>
+<td>Enter</td>
+<td>Select option</td>
+</tr>
+<tr>
+<td>Esc</td>
+<td>Back/Cancel</td>
+</tr>
+</tbody></table>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Color visibility</strong>: Some color combinations may be hard to read on certain terminal backgrounds.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Live preview</strong>: Changes are reflected immediately in the preview panel.</p>
+</div>
+<div class="callout callout-tip">
+<div class="callout-title">TIP</div>
+<p><strong>Language cycling</strong>: Use ←/→ to quickly preview how diffs look in different languages.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Unsaved changes</strong>: If you exit without saving, color changes are lost.</p>
+</div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="Features/DiffDisplay.html">Feature: Diff Display</a></li>
+<li><a href="../Concepts/ConfigurationManagement.html">Concept: Configuration Management</a></li>
+<li><a href="../Endpoints/GetConfigKey.html">Endpoint: GET /api/config/{key}</a></li>
+<li><a href="../Endpoints/SetConfigKey.html">Endpoint: PUT /api/config/{key}</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

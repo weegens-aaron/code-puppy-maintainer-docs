@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Endpoint: DELETE /api/config/{key} — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="CommandAutocomplete.html">Command Autocomplete</a>
+<a href="DeleteConfigKey.html" class="active">Delete Config Key</a>
+<a href="DeleteSession.html">Delete Session</a>
+<a href="ExecuteCommand.html">Execute Command</a>
+<a href="GetCommand.html">Get Command</a>
+<a href="GetConfig.html">Get Config</a>
+<a href="GetConfigKey.html">Get Config Key</a>
+<a href="GetSession.html">Get Session</a>
+<a href="GetSessionMessages.html">Get Session Messages</a>
+<a href="ListAgents.html">List Agents</a>
+<a href="ListCommands.html">List Commands</a>
+<a href="ListConfigKeys.html">List Config Keys</a>
+<a href="ListSessions.html">List Sessions</a>
+<a href="SetConfigKey.html">Set Config Key</a>
+<a href="index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="endpoint-delete-api-config-key">Endpoint: DELETE /api/config/{key}</h1>
+<h2 id="overview">Overview</h2>
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Method</td>
+<td><code>DELETE</code></td>
+</tr>
+<tr>
+<td>Path</td>
+<td><code>/api/config/{key}</code></td>
+</tr>
+<tr>
+<td>Auth</td>
+<td><code>public</code></td>
+</tr>
+<tr>
+<td>Rate Limit</td>
+<td><code>N/A</code></td>
+</tr>
+</tbody></table>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Resets a configuration value to its default by removing it from the config file. After deletion, the system will use the built-in default value for that key.</p>
+<h2 id="request">Request</h2>
+<h3 id="path-parameters">Path Parameters</h3>
+<table>
+<thead><tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td>string</td>
+<td>The configuration key to reset (e.g., <code>default_agent</code>, <code>enable_dbos</code>)</td>
+</tr>
+</tbody></table>
+<h3 id="headers">Headers</h3>
+<table>
+<thead><tr>
+<th>Header</th>
+<th>Required</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Content-Type</td>
+<td>no</td>
+<td><code>application/json</code> (not used for DELETE)</td>
+</tr>
+</tbody></table>
+<h2 id="response">Response</h2>
+<h3 id="success-response-200">Success Response (200)</h3>
+<pre><code class="language-json">{
+  "message": "Config key 'default_agent' reset to default"
+}</code></pre>
+<h3 id="error-responses">Error Responses</h3>
+<table>
+<thead><tr>
+<th>Status</th>
+<th>When</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>404</td>
+<td>If the config key does not exist in the valid keys list</td>
+</tr>
+</tbody></table>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p>Unlike GET/PUT which validate the key exists first, DELETE simply removes the key if present. If the key doesn't exist in the file, it succeeds silently (nothing to delete).</p>
+</div>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Layer</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Route definition</td>
+<td><code>code_puppy/api/routers/config.py:54</code></td>
+<td><code>@router.delete("/{key}")</code></td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>code_puppy/api/routers/config.py:55-59</code></td>
+<td>Calls <code>reset_value()</code></td>
+</tr>
+<tr>
+<td>Business logic</td>
+<td><code>code_puppy/config.py:342-349</code></td>
+<td>Removes key from configparser</td>
+</tr>
+<tr>
+<td>File I/O</td>
+<td><code>code_puppy/config.py</code></td>
+<td>Writes to <code>~/.code_puppy/puppy.cfg</code></td>
+</tr>
+</tbody></table>
+<h2 id="flow">Flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant Client
+    participant Router
+    participant Config
+    
+    Client-&gt;&gt;Router: DELETE /api/config/{key}
+    Router-&gt;&gt;Config: reset_value(key)
+    Config-&gt;&gt;Config: Read puppy.cfg
+    Config-&gt;&gt;Config: Remove key from [DEFAULT]
+    Config-&gt;&gt;Config: Write updated file
+    Config--&gt;&gt;Router: None
+    Router--&gt;&gt;Client: 200 OK + message
+</pre>
+<h2 id="examples">Examples</h2>
+<h3 id="example-request">Example Request</h3>
+<pre><code class="language-bash">curl -X DELETE 'http://localhost:8000/api/config/default_agent'</code></pre>
+<h3 id="example-response">Example Response</h3>
+<pre><code class="language-json">{
+  "message": "Config key 'default_agent' reset to default"
+}</code></pre>
+<h3 id="reset-multiple-config-keys">Reset Multiple Config Keys</h3>
+<pre><code class="language-bash"># Reset agent configuration
+curl -X DELETE 'http://localhost:8000/api/config/default_agent'
+
+# Reset DBOS setting
+curl -X DELETE 'http://localhost:8000/api/config/enable_dbos'
+
+# Reset Universal Constructor
+curl -X DELETE 'http://localhost:8000/api/config/enable_universal_constructor'</code></pre>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Silent success</strong>: If the key doesn't exist in the config file, the endpoint returns 200 OK without error. This is intentional - the end state (key has default value) is the same.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Default values are code-defined</strong>: After deletion, the default value comes from the code (e.g., <code>get_universal_constructor_enabled()</code> returns <code>True</code> if key is missing). Check the config.py getter functions for defaults.</p>
+</div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="GetConfigKey.html">Endpoint: GET /api/config/{key}</a> - Read a config value</li>
+<li><a href="SetConfigKey.html">Endpoint: PUT /api/config/{key}</a> - Set a config value</li>
+<li><a href="ListConfigKeys.html">Endpoint: GET /api/config/keys</a> - List all valid keys</li>
+<li><a href="../Concepts/Configuration.html">Concept: Configuration</a> - How config works</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

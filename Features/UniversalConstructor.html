@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: Universal Constructor — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="AgentCreation.html">Agent Creation</a>
+<a href="AgentSwitching.html">Agent Switching</a>
+<a href="BrowserControl.html">Browser Control</a>
+<a href="CustomSkills.html">Custom Skills</a>
+<a href="HookSystem.html">Hook System</a>
+<a href="JSONAgents.html">JSONAgents</a>
+<a href="MCPManagement.html">MCPManagement</a>
+<a href="MPCCatalog.html">MPCCatalog</a>
+<a href="ModelConfiguration.html">Model Configuration</a>
+<a href="ModelDiscovery.html">Model Discovery</a>
+<a href="PluginDevelopment.html">Plugin Development</a>
+<a href="PythonAgents.html">Python Agents</a>
+<a href="RoundRobinModels.html">Round Robin Models</a>
+<a href="SkillInstallation.html">Skill Installation</a>
+<a href="SkillUsage.html">Skill Usage</a>
+<a href="TaskScheduling.html">Task Scheduling</a>
+<a href="TerminalIntegration.html">Terminal Integration</a>
+<a href="UniversalConstructor.html" class="active">Universal Constructor</a>
+<a href="index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-universal-constructor">Feature: Universal Constructor</h1>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>The Universal Constructor (UC) is a <strong>dynamic tool creation system</strong> that lets you create, manage, and execute custom Python tools at runtime. Instead of waiting for pre-built skills, you can write your own tools on-the-fly and have Code Puppy execute them immediately.</p>
+<p>Think of it as <strong>"skills on demand"</strong> - you describe what you need in Python, and Code Puppy creates a callable tool that persists across sessions.</p>
+<h2 id="why-does-this-exist">Why Does This Exist?</h2>
+<ul>
+<li><strong>Rapid Prototyping</strong>: Test new tool ideas without going through the full skills installation process</li>
+<li><strong>Custom Workflows</strong>: Create tools specific to your projects that don't exist in the public catalog</li>
+<li><strong>Learning &amp; Experimentation</strong>: Understand how tools work by building your own</li>
+<li><strong>Session-Specific Tools</strong>: Create temporary tools for one-off tasks</li>
+</ul>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<ol>
+<li><strong>Create a tool</strong>: Provide Python code with a function and optional metadata</li>
+<li><strong>List available tools</strong>: See all created tools and their status</li>
+<li><strong>Call a tool</strong>: Execute any enabled tool by name with arguments</li>
+<li><strong>Update tools</strong>: Modify existing tool code</li>
+<li><strong>Get info</strong>: View tool details and source code</li>
+</ol>
+<h3 id="system-perspective">System Perspective</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant Agent
+    participant UC Tool
+    participant Registry
+    participant Filesystem
+    
+    User-&gt;&gt;Agent: Request custom tool
+    Agent-&gt;&gt;UC Tool: create(python_code)
+    UC Tool-&gt;&gt;UC Tool: Validate syntax
+    UC Tool-&gt;&gt;UC Tool: Extract TOOL_META
+    UC Tool-&gt;&gt;Filesystem: Write ~/.code_puppy/plugins/universal_constructor/tool.py
+    UC Tool-&gt;&gt;Registry: Reload tools
+    Registry--&gt;&gt;UC Tool: Scan complete
+    UC Tool--&gt;&gt;Agent: Success with preview
+    Agent--&gt;&gt;User: Tool created
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Responsibility</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Tool registration</td>
+<td><code>code_puppy/tools/universal_constructor.py</code></td>
+<td>Main tool implementation</td>
+</tr>
+<tr>
+<td>Registry &amp; discovery</td>
+<td><code>code_puppy/plugins/universal_constructor/registry.py</code></td>
+<td>Scans and loads tools</td>
+</tr>
+<tr>
+<td>Data models</td>
+<td><code>code_puppy/plugins/universal_constructor/models.py</code></td>
+<td>Pydantic models</td>
+</tr>
+<tr>
+<td>Validation</td>
+<td><code>code_puppy/plugins/universal_constructor/sandbox.py</code></td>
+<td>Syntax &amp; safety checks</td>
+</tr>
+<tr>
+<td>Plugin hooks</td>
+<td><code>code_puppy/plugins/universal_constructor/register_callbacks.py</code></td>
+<td>Startup initialization</td>
+</tr>
+<tr>
+<td>CLI menu</td>
+<td><code>code_puppy/command_line/uc_menu.py</code></td>
+<td>Interactive tool management</td>
+</tr>
+<tr>
+<td>Rendering</td>
+<td><code>code_puppy/messaging/rich_renderer.py</code></td>
+<td>Message display</td>
+</tr>
+</tbody></table>
+<h2 id="configuration">Configuration</h2>
+<table>
+<thead><tr>
+<th>Setting</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>enable_universal_constructor</code></td>
+<td>Enable/disable UC feature</td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td>UC tools directory</td>
+<td>Where tools are stored</td>
+<td><code>~/.code_puppy/plugins/universal_constructor/</code></td>
+</tr>
+</tbody></table>
+<h2 id="tool-structure">Tool Structure</h2>
+<p>Every UC tool is a Python file with this structure:</p>
+<pre><code class="language-python"># Required: Tool metadata
+TOOL_META = {
+    "name": "my_tool",
+    "description": "What my tool does",
+    "enabled": True,
+    "version": "1.0.0",
+}
+
+# Required: Callable function (name should match TOOL_META.name)
+def my_tool(arg1: str, arg2: int = 10) -&gt; str:
+    """Docstring explaining what the tool does."""
+    return f"Result: {arg1}, {arg2}"</code></pre>
+<h3 id="namespacing">Namespacing</h3>
+<p>Tools can be organized into namespaces using dot notation:</p>
+<ul>
+<li><code>weather</code> → <code>weather.py</code></li>
+<li><code>api.weather</code> → <code>api/weather.py</code></li>
+<li><code>api.finance.stocks</code> → <code>api/finance/stocks.py</code></li>
+</ul>
+<h2 id="actions">Actions</h2>
+<h3 id="list-list-all-tools"><code>list</code> - List All Tools</h3>
+<pre><code class="language-python">await universal_constructor(action="list")</code></pre>
+<p>Returns all enabled tools with metadata, signatures, and source paths.</p>
+<h3 id="call-execute-a-tool"><code>call</code> - Execute a Tool</h3>
+<pre><code class="language-python">await universal_constructor(
+    action="call",
+    tool_name="my_tool",
+    tool_args={"arg1": "value", "arg2": 42}
+)</code></pre>
+<p>Executes the tool with a 30-second timeout. Returns result or error.</p>
+<h3 id="create-create-a-new-tool"><code>create</code> - Create a New Tool</h3>
+<pre><code class="language-python">await universal_constructor(
+    action="create",
+    tool_name="my_tool",
+    python_code="def my_tool(): return 'hello'",
+    description="A simple greeting tool"
+)</code></pre>
+<p>Creates a new tool file, validates it, and reloads the registry.</p>
+<h3 id="update-modify-an-existing-tool"><code>update</code> - Modify an Existing Tool</h3>
+<pre><code class="language-python">await universal_constructor(
+    action="update",
+    tool_name="my_tool",
+    python_code="def my_tool(): return 'updated'"
+)</code></pre>
+<p>Replaces existing tool code. Tool must already exist.</p>
+<h3 id="info-get-tool-details"><code>info</code> - Get Tool Details</h3>
+<pre><code class="language-python">await universal_constructor(
+    action="info",
+    tool_name="my_tool"
+)</code></pre>
+<p>Returns tool metadata, source code, and signature.</p>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Tool naming</strong>: The function name in your code should match the <code>TOOL_META.name</code> field. If they don't match, the tool may not be callable as expected.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Auto-generated TOOL_META</strong>: If you don't include <code>TOOL_META</code> in your code, one will be auto-generated from the <code>tool_name</code> and <code>description</code> parameters.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Dangerous patterns</strong>: The sandbox checks for dangerous imports (<code>subprocess</code>, <code>eval</code>, <code>exec</code>, etc.) and will warn you, but won't block execution. Review warnings before trusting tools.</p>
+</div>
+<div class="callout callout-tip">
+<div class="callout-title">TIP</div>
+<p><strong>Code formatting</strong>: New tools are automatically formatted with <code>ruff</code>. If <code>ruff</code> is not installed, you'll get a warning but the tool will still be created.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead><tr>
+<th>Scenario</th>
+<th>Behavior</th>
+<th>User Sees</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Syntax error in code</td>
+<td>Creation fails</td>
+<td>"Syntax error in code: ..."</td>
+</tr>
+<tr>
+<td>Tool not found</td>
+<td>Call fails</td>
+<td>"Tool 'X' not found"</td>
+</tr>
+<tr>
+<td>Tool disabled</td>
+<td>Call fails</td>
+<td>"Tool 'X' is disabled"</td>
+</tr>
+<tr>
+<td>Invalid arguments</td>
+<td>Call fails</td>
+<td>"Invalid arguments for 'X': ..."</td>
+</tr>
+<tr>
+<td>Tool timeout (&gt;30s)</td>
+<td>Call fails</td>
+<td>"Tool 'X' timed out after 30s"</td>
+</tr>
+<tr>
+<td>Missing TOOL_META</td>
+<td>Creation succeeds with warning</td>
+<td>"TOOL_META was auto-generated"</td>
+</tr>
+</tbody></table>
+<h2 id="testing-this-feature">Testing This Feature</h2>
+<h3 id="manual-testing">Manual Testing</h3>
+<ol>
+<li><strong>Enable UC</strong> (if disabled): ``` /config set enable_universal_constructor true ```</li>
+</ol>
+<ol>
+<li><strong>Create a simple tool</strong>: ``` /uc create tool_name=hello python_code="def hello(): return 'Hello, World!'" ```</li>
+</ol>
+<ol>
+<li><strong>List tools</strong>: ``` /uc list ```</li>
+</ol>
+<ol>
+<li><strong>Call the tool</strong>: ``` /uc call tool_name=hello ```</li>
+</ol>
+<ol>
+<li><strong>Verify file was created</strong>: ``` ls ~/.code_puppy/plugins/universal_constructor/ ```</li>
+</ol>
+<h3 id="example-tool-creation-flow">Example Tool Creation Flow</h3>
+<pre><code class="language-python"># In an agent session, ask Code Puppy to create a tool:
+"Create a tool called 'add_numbers' that takes two numbers and returns their sum"
+
+# Code Puppy will generate code like:
+TOOL_META = {
+    "name": "add_numbers",
+    "description": "Add two numbers together",
+    "enabled": True,
+    "version": "1.0.0",
+}
+
+def add_numbers(a: int, b: int) -&gt; int:
+    """Add two numbers and return the sum."""
+    return a + b
+
+# Then call it:
+"Call add_numbers with 5 and 3"</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="SkillInstallation.html">Feature: Skill Installation</a> - Public skill catalog vs. custom UC tools</li>
+<li><a href="PluginDevelopment.html">Feature: Plugin Development</a> - How UC integrates via callbacks</li>
+<li><a href="ToolRegistration.html">Concept: Tool Registration</a> - How tools are discovered and registered</li>
+<li><a href="../Guides/CreateHooks.html">Guide: Create Hooks</a> - Extend UC with custom hooks</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: Task Scheduling — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="AgentCreation.html">Agent Creation</a>
+<a href="AgentSwitching.html">Agent Switching</a>
+<a href="BrowserControl.html">Browser Control</a>
+<a href="CustomSkills.html">Custom Skills</a>
+<a href="HookSystem.html">Hook System</a>
+<a href="JSONAgents.html">JSONAgents</a>
+<a href="MCPManagement.html">MCPManagement</a>
+<a href="MPCCatalog.html">MPCCatalog</a>
+<a href="ModelConfiguration.html">Model Configuration</a>
+<a href="ModelDiscovery.html">Model Discovery</a>
+<a href="PluginDevelopment.html">Plugin Development</a>
+<a href="PythonAgents.html">Python Agents</a>
+<a href="RoundRobinModels.html">Round Robin Models</a>
+<a href="SkillInstallation.html">Skill Installation</a>
+<a href="SkillUsage.html">Skill Usage</a>
+<a href="TaskScheduling.html" class="active">Task Scheduling</a>
+<a href="TerminalIntegration.html">Terminal Integration</a>
+<a href="UniversalConstructor.html">Universal Constructor</a>
+<a href="index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-task-scheduling">Feature: Task Scheduling</h1>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Task Scheduling allows you to define automated prompts that run periodically in the background using a daemon process. You can schedule Code Puppy to perform recurring tasks like daily code reviews, periodic dependency checks, or regular status reports without manual intervention.</p>
+<h2 id="why-does-this-exist">Why Does This Exist?</h2>
+<p>Many development workflows benefit from automation:</p>
+<ul>
+<li><strong>Daily standup prep</strong>: Auto-generate progress summaries</li>
+<li><strong>Code hygiene</strong>: Periodic linting, security scans, or dependency updates</li>
+<li><strong>Monitoring</strong>: Regular health checks or usage reports</li>
+<li><strong>Routine tasks</strong>: Recurring code reviews or documentation updates</li>
+</ul>
+<p>Instead of manually running the same prompts repeatedly, you define them once and let the scheduler handle execution.</p>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<ol>
+<li>Run <code>/scheduler</code> in the Code Puppy CLI</li>
+<li>Browse existing scheduled tasks (or create new ones)</li>
+<li>Configure task parameters: name, schedule, agent, model, prompt</li>
+<li>Start the background daemon</li>
+<li>Tasks run automatically at their scheduled intervals</li>
+<li>Monitor execution via logs and status indicators</li>
+</ol>
+<h3 id="system-perspective">System Perspective</h3>
+<pre class="mermaid">
+flowchart TD
+    subgraph User
+        CLI[CLI /scheduler]
+        Wizard[Task Creation Wizard]
+    end
+    
+    subgraph Scheduler
+        Daemon[Scheduler Daemon]
+        Config[Task Config JSON]
+        Executor[Task Executor]
+    end
+    
+    subgraph External
+        CodePuppy[code-puppy CLI]
+        LogFiles[Log Files]
+    end
+    
+    CLI --&gt; Wizard
+    Wizard --&gt; Config
+    Daemon --&gt; Config
+    Daemon --&gt; Executor
+    Executor --&gt; CodePuppy
+    Executor --&gt; LogFiles
+    Config -.-&gt; Daemon
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Responsibility</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Daemon loop</td>
+<td><code>code_puppy/scheduler/daemon.py</code></td>
+<td>Main scheduler process, checks tasks every 60s</td>
+</tr>
+<tr>
+<td>Task config</td>
+<td><code>code_puppy/scheduler/config.py</code></td>
+<td><code>ScheduledTask</code> dataclass, JSON persistence</td>
+</tr>
+<tr>
+<td>Task execution</td>
+<td><code>code_puppy/scheduler/executor.py</code></td>
+<td>Invokes <code>code-puppy</code> CLI with task parameters</td>
+</tr>
+<tr>
+<td>CLI menu</td>
+<td><code>code_puppy/plugins/scheduler/scheduler_menu.py</code></td>
+<td>Interactive TUI for task management</td>
+</tr>
+<tr>
+<td>Creation wizard</td>
+<td><code>code_puppy/plugins/scheduler/scheduler_wizard.py</code></td>
+<td>Step-by-step task creation</td>
+</tr>
+<tr>
+<td>Plugin registration</td>
+<td><code>code_puppy/plugins/scheduler/register_callbacks.py</code></td>
+<td>Hooks into <code>/scheduler</code> command</td>
+</tr>
+</tbody></table>
+<h2 id="configuration">Configuration</h2>
+<h3 id="schedule-types">Schedule Types</h3>
+<table>
+<thead><tr>
+<th>Type</th>
+<th>Value Format</th>
+<th>Example</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>interval</code></td>
+<td><code>&lt;number&gt;&lt;unit&gt;</code> where unit is <code>s</code>, <code>m</code>, <code>h</code>, <code>d</code></td>
+<td><code>30m</code>, <code>2h</code>, <code>1d</code></td>
+</tr>
+<tr>
+<td><code>hourly</code></td>
+<td><code>1h</code></td>
+<td>Runs every hour</td>
+</tr>
+<tr>
+<td><code>daily</code></td>
+<td><code>24h</code></td>
+<td>Runs once per day</td>
+</tr>
+<tr>
+<td><code>cron</code></td>
+<td>Not yet supported</td>
+<td>Would be <code>0 9 * * *</code></td>
+</tr>
+</tbody></table>
+<h3 id="task-parameters">Task Parameters</h3>
+<table>
+<thead><tr>
+<th>Parameter</th>
+<th>Description</th>
+<th>Required</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>Human-readable task name</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>prompt</code></td>
+<td>The prompt to execute</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>agent</code></td>
+<td>Agent to use (e.g., <code>code-puppy</code>)</td>
+<td>No (default: <code>code-puppy</code>)</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>Model override</td>
+<td>No (uses default)</td>
+</tr>
+<tr>
+<td><code>schedule_type</code></td>
+<td><code>interval</code>, <code>hourly</code>, <code>daily</code>, <code>cron</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>schedule_value</code></td>
+<td>Schedule value (e.g., <code>1h</code>)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>working_directory</code></td>
+<td>Where to run the task</td>
+<td>No (default: current dir)</td>
+</tr>
+</tbody></table>
+<h3 id="file-locations">File Locations</h3>
+<table>
+<thead><tr>
+<th>File</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>~/.code_puppy/data/scheduled_tasks.json</code></td>
+<td>Task definitions</td>
+</tr>
+<tr>
+<td><code>~/.code_puppy/data/scheduler.pid</code></td>
+<td>Daemon PID tracking</td>
+</tr>
+<tr>
+<td><code>~/.code_puppy/data/scheduler_logs/&lt;id&gt;.log</code></td>
+<td>Task execution logs</td>
+</tr>
+</tbody></table>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Cron schedules are not yet supported</strong> - The system accepts <code>cron</code> as a schedule type but logs a warning and skips execution. Only <code>interval</code>, <code>hourly</code>, and <code>daily</code> work currently.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Daemon must be running</strong> - Scheduled tasks only execute when the daemon is active. Use <code>s</code> in the scheduler menu to start/stop it.</p>
+</div>
+<div class="callout callout-tip">
+<div class="callout-title">TIP</div>
+<p><strong>Working directory validation</strong> - If the configured working directory doesn't exist, the task fails immediately with exit code -1.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>TOCTOU race condition</strong> - There's a small window where two instances could start simultaneously. The daemon re-checks after starting to mitigate this.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead><tr>
+<th>Scenario</th>
+<th>Behavior</th>
+<th>User Sees</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Working directory missing</td>
+<td>Task fails, status = <code>failed</code></td>
+<td>Exit code -1 in log</td>
+</tr>
+<tr>
+<td><code>code-puppy</code> not in PATH</td>
+<td>Task fails, status = <code>failed</code></td>
+<td>"code-puppy not found" error</td>
+</tr>
+<tr>
+<td>Daemon not running</td>
+<td>Tasks don't execute</td>
+<td>Daemon status shows "STOPPED"</td>
+</tr>
+<tr>
+<td>JSON config corrupted</td>
+<td>Tasks not loaded</td>
+<td>Empty task list, no error</td>
+</tr>
+<tr>
+<td>Task prompt empty</td>
+<td>Task created but may fail</td>
+<td>Depends on CLI behavior</td>
+</tr>
+</tbody></table>
+<h2 id="testing-this-feature">Testing This Feature</h2>
+<h3 id="manual-testing-steps">Manual Testing Steps</h3>
+<pre><code class="language-bash"># 1. Start Code Puppy
+code-puppy
+
+# 2. Open scheduler menu
+/scheduler
+
+# 3. Create a test task:
+#    - Press 'n' for new task
+#    - Name: "Test Task"
+#    - Schedule: "Every hour"
+#    - Agent: "code-puppy"
+#    - Prompt: "echo 'Hello from scheduled task'"
+#    - Working directory: "."
+
+# 4. Start the daemon:
+#    - Press 's' to toggle daemon on
+
+# 5. Verify daemon is running:
+#    - Status should show "🐕 Daemon: RUNNING (PID &lt;number&gt;)"
+
+# 6. Check task execution:
+#    - Wait for scheduled time (or press 'r' to run immediately)
+#    - Press 't' to tail the log file
+
+# 7. Stop the daemon:
+#    - Press 's' again</code></pre>
+<h3 id="quick-test-immediate-execution">Quick Test (Immediate Execution)</h3>
+<pre><code class="language-bash"># Create a task with immediate interval
+# Then press 'r' in the scheduler menu to run it now
+# Check the log file: ~/.code_puppy/data/scheduler_logs/&lt;task-id&gt;.log</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Concepts/SessionManagement.html">Concept: Session Management</a> - How sessions persist across runs</li>
+<li><a href="../PluginDevelopment.html">Feature: Plugin Development</a> - How the scheduler plugin integrates</li>
+<li><a href="../Flows/PluginLoading.html">Flow: Plugin Loading</a> - How plugins register commands</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

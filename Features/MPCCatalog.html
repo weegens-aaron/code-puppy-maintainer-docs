@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: MCP Catalog — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="AgentCreation.html">Agent Creation</a>
+<a href="AgentSwitching.html">Agent Switching</a>
+<a href="BrowserControl.html">Browser Control</a>
+<a href="CustomSkills.html">Custom Skills</a>
+<a href="HookSystem.html">Hook System</a>
+<a href="JSONAgents.html">JSONAgents</a>
+<a href="MCPManagement.html">MCPManagement</a>
+<a href="MPCCatalog.html" class="active">MPCCatalog</a>
+<a href="ModelConfiguration.html">Model Configuration</a>
+<a href="ModelDiscovery.html">Model Discovery</a>
+<a href="PluginDevelopment.html">Plugin Development</a>
+<a href="PythonAgents.html">Python Agents</a>
+<a href="RoundRobinModels.html">Round Robin Models</a>
+<a href="SkillInstallation.html">Skill Installation</a>
+<a href="SkillUsage.html">Skill Usage</a>
+<a href="TaskScheduling.html">Task Scheduling</a>
+<a href="TerminalIntegration.html">Terminal Integration</a>
+<a href="UniversalConstructor.html">Universal Constructor</a>
+<a href="index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-mcp-catalog">Feature: MCP Catalog</h1>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>The MCP Catalog is a <strong>curated collection of pre-configured MCP servers</strong> that can be easily searched, browsed, and installed through the Code Puppy CLI. Instead of manually configuring each server, users can discover and install servers with a few commands.</p>
+<h2 id="why-does-this-exist">Why Does This Exist?</h2>
+<p>MCP (Model Context Protocol) servers extend Code Puppy's capabilities (filesystem access, database queries, browser control, etc.), but configuring them requires understanding JSON schemas, environment variables, and command-line arguments. The catalog:</p>
+<ul>
+<li><strong>Reduces friction</strong> for new users discovering MCP servers</li>
+<li><strong>Provides verified configurations</strong> that are known to work</li>
+<li><strong>Categorizes servers</strong> by use case (Database, Web, DevOps, etc.)</li>
+<li><strong>Handles complexity</strong> by managing environment variables and dependencies</li>
+</ul>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<ol>
+<li>Browse available servers via <code>/mcp search &lt;query&gt;</code> or <code>/mcp list</code></li>
+<li>View server details including requirements and configuration</li>
+<li>Install with <code>/mcp install &lt;server-id&gt;</code></li>
+<li>The system prompts for any required environment variables or configuration values</li>
+<li>Server is automatically added to <code>mcp_servers.json</code> and can be started</li>
+</ol>
+<h3 id="system-perspective">System Perspective</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant CLI
+    participant Catalog
+    participant Registry
+    participant Config
+
+    User-&gt;&gt;CLI: /mcp search "database"
+    CLI-&gt;&gt;Catalog: search("database")
+    Catalog--&gt;&gt;CLI: List of matching servers
+    CLI--&gt;&gt;User: Display results
+
+    User-&gt;&gt;CLI: /mcp install postgres
+    CLI-&gt;&gt;Catalog: get_by_id("postgres")
+    Catalog--&gt;&gt;CLI: Server template
+    CLI-&gt;&gt;User: Prompt for connection string
+    User-&gt;&gt;CLI: Provide values
+    CLI-&gt;&gt;Registry: Register server config
+    Registry-&gt;&gt;Config: Write to mcp_servers.json
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Responsibility</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Server templates</td>
+<td><code>code_puppy/mcp_/server_registry_catalog.py</code></td>
+<td><code>MCP_SERVER_REGISTRY</code> list</td>
+</tr>
+<tr>
+<td>Catalog class</td>
+<td><code>code_puppy/mcp_/server_registry_catalog.py</code></td>
+<td><code>MCPServerCatalog</code> with search</td>
+</tr>
+<tr>
+<td>CLI commands</td>
+<td><code>code_puppy/command_line/mcp/</code></td>
+<td><code>search_command.py</code>, <code>install_menu.py</code></td>
+</tr>
+<tr>
+<td>Server registry</td>
+<td><code>code_puppy/mcp_/registry.py</code></td>
+<td>Stores configured servers</td>
+</tr>
+<tr>
+<td>Manager integration</td>
+<td><code>code_puppy/mcp_/manager.py</code></td>
+<td><code>MCPManager</code> uses catalog</td>
+</tr>
+</tbody></table>
+<h2 id="configuration">Configuration</h2>
+<h3 id="server-template-structure">Server Template Structure</h3>
+<p>Each server in the catalog is defined as an <code>MCPServerTemplate</code>:</p>
+<pre><code class="language-python">MCPServerTemplate(
+    id="postgres",
+    name="postgres",
+    display_name="PostgreSQL Database",
+    description="Connect to and query PostgreSQL databases",
+    category="Database",
+    tags=["database", "sql", "postgres"],
+    type="stdio",  # or "http", "sse"
+    config={
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-postgres", "${connection_string}"],
+    },
+    requires=MCPServerRequirements(
+        environment_vars=["DATABASE_URL"],
+        command_line_args=[{
+            "name": "connection_string",
+            "prompt": "PostgreSQL connection string",
+            "default": "postgresql://localhost/mydb",
+            "required": True,
+        }],
+        required_tools=["node", "npm", "npx"],
+        package_dependencies=["@modelcontextprotocol/server-postgres"],
+    ),
+    verified=True,
+    popular=True,
+)</code></pre>
+<h3 id="categories">Categories</h3>
+<p>The catalog organizes servers into these categories:</p>
+<table>
+<thead><tr>
+<th>Category</th>
+<th>Description</th>
+<th>Examples</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Code</td>
+<td>Code generation and analysis</td>
+<td>Serena</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>File and cloud storage</td>
+<td>Filesystem, Google Drive, S3</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>SQL and NoSQL databases</td>
+<td>PostgreSQL, SQLite, MongoDB</td>
+</tr>
+<tr>
+<td>Development</td>
+<td>Git, GitHub, GitLab</td>
+<td>Git, GitHub API</td>
+</tr>
+<tr>
+<td>Web</td>
+<td>Browser automation</td>
+<td>Puppeteer, Playwright, Fetch</td>
+</tr>
+<tr>
+<td>Communication</td>
+<td>Chat and email</td>
+<td>Slack, Discord, Email</td>
+</tr>
+<tr>
+<td>AI</td>
+<td>LLM APIs</td>
+<td>OpenAI, Anthropic</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>Data processing</td>
+<td>Pandas, Jupyter</td>
+</tr>
+<tr>
+<td>Cloud</td>
+<td>Cloud services</td>
+<td>AWS S3, Azure Storage</td>
+</tr>
+<tr>
+<td>Security</td>
+<td>Secrets management</td>
+<td>1Password, HashiCorp Vault</td>
+</tr>
+<tr>
+<td>Documentation</td>
+<td>Wikis and docs</td>
+<td>Confluence, Notion, Context7</td>
+</tr>
+<tr>
+<td>DevOps</td>
+<td>Container and infra</td>
+<td>Docker, Kubernetes, Terraform</td>
+</tr>
+<tr>
+<td>Monitoring</td>
+<td>Metrics and alerts</td>
+<td>Prometheus, Grafana</td>
+</tr>
+<tr>
+<td>Package Management</td>
+<td>Package registries</td>
+<td>NPM, PyPI</td>
+</tr>
+</tbody></table>
+<h2 id="available-hooks">Available Hooks</h2>
+<p>Plugins can extend the catalog via the <code>register_mcp_catalog_servers</code> callback:</p>
+<pre><code class="language-python">from code_puppy.callbacks import register_callback
+
+def _on_register_mcp_catalog_servers():
+    from code_puppy.mcp_.server_registry_catalog import MCPServerTemplate, MCPServerRequirements
+    
+    return [
+        MCPServerTemplate(
+            id="my-custom-server",
+            name="my-custom-server",
+            display_name="My Custom Server",
+            description="A custom MCP server for...",
+            category="Custom",
+            tags=["custom", "special"],
+            type="stdio",
+            config={"command": "my-command", "args": []},
+            requires=MCPServerRequirements(
+                required_tools=["my-tool"],
+            ),
+        )
+    ]
+
+register_callback("register_mcp_catalog_servers", _on_register_mcp_catalog_servers)</code></pre>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Placeholders in config</strong>: Use <code>${VAR_NAME}</code> syntax for values that should be prompted at install time (e.g., connection strings, paths).</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Plugin extension</strong>: The catalog is built at import time. Plugins adding servers via callback will have them included, but the global <code>catalog</code> instance is created before plugins load. Use <code>MCPServerCatalog()</code> to get a fresh instance with plugin servers.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Verification flag</strong>: <code>verified=True</code> indicates the server configuration has been tested. Users should still verify API keys and permissions work in their environment.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead><tr>
+<th>Scenario</th>
+<th>Behavior</th>
+<th>User Sees</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Server not found in catalog</td>
+<td>Returns empty search results</td>
+<td>"No servers matching 'xyz'"</td>
+</tr>
+<tr>
+<td>Missing required tool</td>
+<td>Installation menu shows warning</td>
+<td>"Requires: node, npm (not found)"</td>
+</tr>
+<tr>
+<td>Invalid environment variable</td>
+<td>Server config written but won't start</td>
+<td>Server fails to start, check logs</td>
+</tr>
+<tr>
+<td>Duplicate server name</td>
+<td>Registry handles by name</td>
+<td>"Server 'postgres' already exists"</td>
+</tr>
+</tbody></table>
+<h2 id="testing-this-feature">Testing This Feature</h2>
+<pre><code class="language-bash"># Search for servers
+code_puppy /mcp search database
+
+# List all categories
+code_puppy /mcp list
+
+# Install a server (will prompt for config)
+code_puppy /mcp install postgres
+
+# View installed servers
+code_puppy /mcp status</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="MCPManagement.html">Feature: MCP Server Management</a></li>
+<li><a href="../Concepts/MCPIntegration.html">Concept: MCP Integration</a></li>
+<li><a href="../Guides/ManageMCP.html">Guide: Manage MCP Servers</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

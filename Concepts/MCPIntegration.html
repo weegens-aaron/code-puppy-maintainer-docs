@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept: MCP Integration — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="AgentArchitecture.html">Agent Architecture</a>
+<a href="CallbackSystem.html">Callback System</a>
+<a href="ConfigurationManagement.html">Configuration Management</a>
+<a href="ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="MCPIntegration.html" class="active">MCPIntegration</a>
+<a href="ToolRegistration.html">Tool Registration</a>
+<a href="index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="concept-mcp-integration">Concept: MCP Integration</h1>
+<h2 id="what-is-this">What Is This?</h2>
+<p>MCP (Model Context Protocol) Integration is the system that connects Code Puppy to external MCP servers. MCP servers provide specialized capabilities like file system access, database queries, browser automation, and more. The integration manages server lifecycle, handles errors, and exposes servers to AI agents as tools.</p>
+<h2 id="why-this-approach">Why This Approach?</h2>
+<p>The MCP integration uses a <strong>manager pattern</strong> with <strong>managed servers</strong> to:</p>
+<ul>
+<li><strong>Standardize access</strong>: All servers follow the same interface</li>
+<li><strong>Handle lifecycle</strong>: Automatic startup, monitoring, and recovery</li>
+<li><strong>Provide resilience</strong>: Error isolation and retry mechanisms</li>
+<li><strong>Enable discovery</strong>: Server catalog and auto-completion</li>
+<li><strong>Support multiple types</strong>: stdio, SSE, and streamable HTTP servers</li>
+</ul>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="the-pattern">The Pattern</h3>
+<pre class="mermaid">
+flowchart TB
+    subgraph Manager["MCPManager"]
+        Registry[ServerRegistry]
+        Tracker[StatusTracker]
+        Servers[ManagedServers]
+    end
+    
+    subgraph Lifecycle["Server Lifecycle"]
+        Register[Register]
+        Start[Start]
+        Monitor[Monitor]
+        Recover[Recover]
+    end
+    
+    subgraph Agent["Agent Integration"]
+        GetServers[get_servers_for_agent]
+        UseTools[Use as Tools]
+    end
+    
+    Manager --&gt; Registry
+    Manager --&gt; Tracker
+    Manager --&gt; Servers
+    
+    Servers --&gt; Lifecycle
+    Lifecycle --&gt; Start
+    Lifecycle --&gt; Monitor
+    Lifecycle --&gt; Recover
+    
+    Manager --&gt; GetServers
+    GetServers --&gt; Agent
+</pre>
+<h3 id="example">Example</h3>
+<pre><code class="language-python">from code_puppy.mcp_ import get_mcp_manager
+from code_puppy.mcp_.managed_server import ServerConfig
+
+# Get the manager
+manager = get_mcp_manager()
+
+# Register a server
+config = ServerConfig(
+    name="filesystem",
+    type="stdio",
+    config={
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem"]
+    }
+)
+server_id = manager.register_server(config)
+
+# Get servers for agent use
+servers = manager.get_servers_for_agent()</code></pre>
+<h2 id="where-it-s-used">Where It's Used</h2>
+<table>
+<thead><tr>
+<th>Feature/Flow</th>
+<th>How It Uses This</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><a href="../Features/MCPManagement.html">MCP Management</a></td>
+<td>Users manage servers via CLI</td>
+</tr>
+<tr>
+<td><a href="../Features/MPCCatalog.html">MCP Catalog</a></td>
+<td>Browse and discover servers</td>
+</tr>
+<tr>
+<td><a href="../Flows/AgentExecution.html">Agent Execution</a></td>
+<td>Agents use MCP servers as tools</td>
+</tr>
+<tr>
+<td><a href="../Flows/PluginLoading.html">Plugin Loading</a></td>
+<td>Plugins can register servers</td>
+</tr>
+</tbody></table>
+<h2 id="implementation-locations">Implementation Locations</h2>
+<table>
+<thead><tr>
+<th>Aspect</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Core manager</td>
+<td><code>code_puppy/mcp_/manager.py</code></td>
+</tr>
+<tr>
+<td>Server config</td>
+<td><code>code_puppy/mcp_/managed_server.py</code></td>
+</tr>
+<tr>
+<td>Registry</td>
+<td><code>code_puppy/mcp_/registry.py</code></td>
+</tr>
+<tr>
+<td>Status tracker</td>
+<td><code>code_puppy/mcp_/status_tracker.py</code></td>
+</tr>
+<tr>
+<td>Lifecycle</td>
+<td><code>code_puppy/mcp_/async_lifecycle.py</code></td>
+</tr>
+<tr>
+<td>Catalog</td>
+<td><code>code_puppy/mcp_/server_registry_catalog.py</code></td>
+</tr>
+<tr>
+<td>Error isolation</td>
+<td><code>code_puppy/mcp_/error_isolation.py</code></td>
+</tr>
+</tbody></table>
+<h2 id="server-types">Server Types</h2>
+<h3 id="stdio-servers">Stdio Servers</h3>
+<p>Run as child processes with stdio communication.</p>
+<pre><code class="language-python">config = ServerConfig(
+    name="filesystem",
+    type="stdio",
+    config={
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+        "env": {}
+    }
+)</code></pre>
+<p><strong>Characteristics:</strong></p>
+<ul>
+<li>Run as subprocess</li>
+<li>Communicate via stdin/stdout</li>
+<li>Easy to debug</li>
+<li>Process lifecycle managed by Code Puppy</li>
+</ul>
+<h3 id="sse-servers">SSE Servers</h3>
+<p>Connect via Server-Sent Events over HTTP.</p>
+<pre><code class="language-python">config = ServerConfig(
+    name="remote-server",
+    type="sse",
+    config={
+        "url": "http://localhost:3000/sse"
+    }
+)</code></pre>
+<p><strong>Characteristics:</strong></p>
+<ul>
+<li>HTTP-based connection</li>
+<li>Event-driven updates</li>
+<li>Network-dependent</li>
+<li>External process management</li>
+</ul>
+<h3 id="streamable-http-servers">Streamable HTTP Servers</h3>
+<p>Use modern HTTP streaming.</p>
+<pre><code class="language-python">config = ServerConfig(
+    name="streaming-server",
+    type="streamable_http",
+    config={
+        "url": "http://localhost:3000/mcp"
+    }
+)</code></pre>
+<p><strong>Characteristics:</strong></p>
+<ul>
+<li>HTTP POST requests</li>
+<li>Streaming responses</li>
+<li>Modern protocol</li>
+<li>Better performance</li>
+</ul>
+<h2 id="server-lifecycle">Server Lifecycle</h2>
+<h3 id="states">States</h3>
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --&gt; Initialized
+    Initialized --&gt; Starting
+    Starting --&gt; Running
+    Starting --&gt; Failed
+    Running --&gt; Stopping
+    Running --&gt; Failed
+    Stopping --&gt; [*]
+    Failed --&gt; [*]
+    
+    Failed --&gt; Starting : Retry
+</pre>
+<table>
+<thead><tr>
+<th>State</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Initialized</td>
+<td>Server registered but not started</td>
+</tr>
+<tr>
+<td>Starting</td>
+<td>Server is starting up</td>
+</tr>
+<tr>
+<td>Running</td>
+<td>Server is operational</td>
+</tr>
+<tr>
+<td>Stopping</td>
+<td>Server is shutting down</td>
+</tr>
+<tr>
+<td>Failed</td>
+<td>Server failed to start or crashed</td>
+</tr>
+<tr>
+<td>Quarantined</td>
+<td>Server repeatedly failed, disabled</td>
+</tr>
+</tbody></table>
+<h3 id="lifecycle-events">Lifecycle Events</h3>
+<table>
+<thead><tr>
+<th>Event</th>
+<th>Trigger</th>
+<th>Action</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>on_start</code></td>
+<td>Server starting</td>
+<td>Log, update status</td>
+</tr>
+<tr>
+<td><code>on_ready</code></td>
+<td>Server ready</td>
+<td>Mark as running</td>
+</tr>
+<tr>
+<td><code>on_error</code></td>
+<td>Error occurred</td>
+<td>Log, potentially quarantine</td>
+</tr>
+<tr>
+<td><code>on_stop</code></td>
+<td>Server stopping</td>
+<td>Cleanup resources</td>
+</tr>
+</tbody></table>
+<h2 id="server-registration">Server Registration</h2>
+<h3 id="from-config-file">From Config File</h3>
+<p>Servers in <code>mcp_servers.json</code> are auto-registered:</p>
+<pre><code class="language-json">{
+  "filesystem": {
+    "type": "stdio",
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+    "enabled": true
+  }
+}</code></pre>
+<h3 id="programmatic-registration">Programmatic Registration</h3>
+<pre><code class="language-python">from code_puppy.mcp_ import get_mcp_manager
+from code_puppy.mcp_.managed_server import ServerConfig
+
+manager = get_mcp_manager()
+
+config = ServerConfig(
+    name="my-server",
+    type="stdio",
+    config={"command": "python", "args": ["server.py"]}
+)
+
+server_id = manager.register_server(config)</code></pre>
+<h3 id="via-plugin">Via Plugin</h3>
+<pre><code class="language-python">from code_puppy.callbacks import register_callback
+
+def register_mcp_servers():
+    return [
+        {
+            "name": "my-plugin-server",
+            "config": ServerConfig(...)
+        }
+    ]
+
+register_callback("register_mcp_servers", register_mcp_servers)</code></pre>
+<h2 id="agent-integration">Agent Integration</h2>
+<h3 id="getting-servers-for-agents">Getting Servers for Agents</h3>
+<pre><code class="language-python">from code_puppy.mcp_ import get_mcp_manager
+
+manager = get_mcp_manager()
+
+# Get pydantic-ai compatible server instances
+servers = manager.get_servers_for_agent()
+
+# These can be passed to pydantic-ai Agent
+agent = Agent("gpt-5.3-codex", mcp_servers=servers)</code></pre>
+<h3 id="server-filtering">Server Filtering</h3>
+<pre><code class="language-python"># Get only enabled servers
+enabled = manager.get_servers_for_agent(enabled_only=True)
+
+# Get servers by name
+specific = manager.get_servers_for_agent(names=["filesystem"])</code></pre>
+<h2 id="error-handling">Error Handling</h2>
+<h3 id="quarantine">Quarantine</h3>
+<p>Servers that repeatedly fail are quarantined:</p>
+<pre><code class="language-python"># Server automatically quarantined after 3 failures
+# Can be manually re-enabled
+manager.unquarantine_server(server_id)</code></pre>
+<h3 id="error-isolation">Error Isolation</h3>
+<p>Errors in one server don't affect others:</p>
+<pre><code class="language-python">from code_puppy.mcp_.error_isolation import MCPErrorIsolator
+
+isolator = MCPErrorIsolator()
+isolator.isolate_server(server)</code></pre>
+<h3 id="retry-logic">Retry Logic</h3>
+<p>Failed servers can be retried:</p>
+<pre><code class="language-python">from code_puppy.mcp_.retry_manager import get_retry_manager
+
+retry_manager = get_retry_manager()
+retry_manager.schedule_retry(server_id)</code></pre>
+<h2 id="conventions-rules">Conventions &amp; Rules</h2>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Server IDs</strong>: Each server has a unique ID (auto-generated if not provided)</p>
+</div>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Server names</strong>: Must be unique and match config file keys</p>
+</div>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Enabled state</strong>: Disabled servers are not started or exposed to agents</p>
+</div>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Error handling</strong>: Never let server errors crash the main application</p>
+</div>
+<h2 id="anti-patterns-to-avoid">Anti-Patterns to Avoid</h2>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't block on startup</strong>: Use async startup with timeouts</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't ignore errors</strong>: Log all errors and track failure counts</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't share servers</strong>: Each agent gets its own server instances</p>
+</div>
+<h2 id="extending-this">Extending This</h2>
+<p>To add a new server type:</p>
+<ol>
+<li><strong>Create server class</strong> in <code>code_puppy/mcp_/</code>: ```python class MyCustomServer: async def connect(self): # Connection logic pass  async def disconnect(self): # Cleanup logic pass ```</li>
+</ol>
+<ol>
+<li><strong>Add to manager</strong> in <code>manager.py</code>: ```python def _create_server(self, config: ServerConfig): if config.type == "custom": return MyCustomServer(config) ```</li>
+</ol>
+<ol>
+<li><strong>Document the type</strong> in this concept doc</li>
+</ol>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/MCPManagement.html">Feature: MCP Management</a></li>
+<li><a href="../Features/MPCCatalog.html">Feature: MCP Catalog</a></li>
+<li><a href="../Flows/AgentExecution.html">Flow: Agent Execution</a></li>
+<li><a href="../Views/MCPManager.html">View: MCP Manager</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow: Installing a Skill — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="AddingAModel.html">Adding AModel</a>
+<a href="AgentExecution.html">Agent Execution</a>
+<a href="FirstTimeSetup.html">First Time Setup</a>
+<a href="InstallingASkill.html" class="active">Installing ASkill</a>
+<a href="MessageHistoryProcessing.html">Message History Processing</a>
+<a href="PluginLoading.html">Plugin Loading</a>
+<a href="RunningATask.html">Running ATask</a>
+<a href="StreamEventProcessing.html">Stream Event Processing</a>
+<a href="ToolCallExecution.html">Tool Call Execution</a>
+<a href="index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="flow-installing-a-skill">Flow: Installing a Skill</h1>
+<h2 id="what-happens">What Happens?</h2>
+<p>This flow handles the complete journey of browsing, selecting, downloading, and installing a remote agent skill from the skill catalog into the local <code>~/.code_puppy/skills/</code> directory. It includes safety validations, user confirmation, and post-install verification.</p>
+<h2 id="trigger">Trigger</h2>
+<ul>
+<li><strong>User action</strong>: <code>/skills install</code> command in the CLI</li>
+<li><strong>UI</strong>: Interactive split-panel TUI for browsing categories and skills</li>
+</ul>
+<h2 id="outcome">Outcome</h2>
+<ul>
+<li>Skill ZIP downloaded from remote URL</li>
+<li>Extracted and validated for safety (zip-slip protection)</li>
+<li>Installed to <code>~/.code_puppy/skills/&lt;skill_id&gt;/</code></li>
+<li>Skill cache refreshed for immediate availability</li>
+<li>User sees success/error feedback</li>
+</ul>
+<h2 id="step-by-step">Step-by-Step</h2>
+<pre class="mermaid">
+flowchart TD
+    A[/skills install] --&gt; B[Launch TUI]
+    B --&gt; C[Load Remote Catalog]
+    C --&gt; D{Catalog Available?}
+    D --&gt;|No| E[Show Empty Menu]
+    D --&gt;|Yes| F[Browse Categories]
+    F --&gt; G[Select Category]
+    G --&gt; H[Browse Skills]
+    H --&gt; I[Select Skill]
+    I --&gt; J[Show Details]
+    J --&gt; K{User Presses Enter}
+    K --&gt; L[Confirm Installation]
+    L --&gt; M{Already Installed?}
+    M --&gt;|Yes| N[Ask Reinstall?]
+    M --&gt;|No| O[Proceed Download]
+    N --&gt;|Cancel| P[Exit]
+    N --&gt;|Confirm| O
+    O --&gt; Q[Download ZIP]
+    Q --&gt; R{Download Success?}
+    R --&gt;|No| S[Show Error]
+    R --&gt;|Yes| T[Validate ZIP Safety]
+    T --&gt; U{Safe?}
+    U --&gt;|No| S
+    U --&gt;|Yes| V[Extract to Temp]
+    V --&gt; W{Extract Success?}
+    W --&gt;|No| S
+    W --&gt;|Yes| X[Verify SKILL.md]
+    X --&gt; Y{Valid Layout?}
+    Y --&gt;|No| S
+    Y --&gt;|Yes| Z[Move to Skills Dir]
+    Z --&gt; AA{Move Success?}
+    AA --&gt;|No| S
+    AA --&gt;|Yes| AB[Refresh Cache]
+    AB --&gt; AC[Show Success]
+    S --&gt; AD[Exit]
+    AC --&gt; AD
+    P --&gt; AD
+</pre>
+<h3 id="1-launch-tui">1. Launch TUI</h3>
+<ul>
+<li><strong>What</strong>: Opens split-panel prompt_toolkit interface</li>
+<li><strong>Where</strong>: <code>code_puppy/plugins/agent_skills/skills_install_menu.py</code></li>
+<li><strong>Failure mode</strong>: TUI fails to start, returns <code>False</code> immediately</li>
+</ul>
+<h3 id="2-load-remote-catalog">2. Load Remote Catalog</h3>
+<ul>
+<li><strong>What</strong>: Fetches skill catalog from remote source with cache fallback</li>
+<li><strong>Where</strong>: <code>code_puppy/plugins/agent_skills/remote_catalog.py</code> → <code>SkillCatalog.__init__()</code></li>
+<li><strong>Failure mode</strong>: Catalog empty, shows "No remote categories available" message</li>
+</ul>
+<h3 id="3-browse-categories">3. Browse Categories</h3>
+<ul>
+<li><strong>What</strong>: Displays paginated list of skill categories with skill counts</li>
+<li><strong>Where</strong>: <code>SkillsInstallMenu._render_category_list()</code></li>
+<li><strong>Navigation</strong>: Arrow keys to navigate, Enter to enter category, Esc to exit</li>
+</ul>
+<h3 id="4-browse-skills">4. Browse Skills</h3>
+<ul>
+<li><strong>What</strong>: Shows skills in selected category with install status indicators</li>
+<li><strong>Where</strong>: <code>SkillsInstallMenu._render_skill_list()</code></li>
+<li><strong>Status icons</strong>: <code>✓</code> = installed, <code>○</code> = not installed</li>
+</ul>
+<h3 id="5-view-details">5. View Details</h3>
+<ul>
+<li><strong>What</strong>: Displays skill metadata: description, size, download URL, contents</li>
+<li><strong>Where</strong>: <code>SkillsInstallMenu._render_details()</code></li>
+<li><strong>Info shown</strong>: ID, description, category, tags, file count, ZIP size</li>
+</ul>
+<h3 id="6-confirm-installation">6. Confirm Installation</h3>
+<ul>
+<li><strong>What</strong>: Prompts user with confirmation before downloading</li>
+<li><strong>Where</strong>: <code>_prompt_and_install()</code></li>
+<li><strong>Message format</strong>: <code>Install skill '&lt;name&gt;' (&lt;size&gt;)? [y/N]</code></li>
+<li><strong>Cancellation</strong>: Any input except <code>y</code>/<code>yes</code> cancels</li>
+</ul>
+<h3 id="7-download-zip">7. Download ZIP</h3>
+<ul>
+<li><strong>What</strong>: Streams ZIP file from remote URL to temp directory</li>
+<li><strong>Where</strong>: <code>download_and_install_skill()</code> → <code>_download_to_file()</code></li>
+<li><strong>Security</strong>: 30s timeout, streaming download, User-Agent header</li>
+<li><strong>Failure mode</strong>: Network error, HTTP error, returns <code>InstallResult(success=False)</code></li>
+</ul>
+<h3 id="8-validate-zip-safety">8. Validate ZIP Safety</h3>
+<ul>
+<li><strong>What</strong>: Checks for zip-slip path traversal and size limits</li>
+<li><strong>Where</strong>: <code>_validate_zip_safety()</code></li>
+<li><strong>Checks</strong>:</li>
+<li>Absolute paths (starting with <code>/</code>)</li>
+<li>Parent traversal (<code>..</code> in path)</li>
+<li>Total uncompressed size &gt; 50MB</li>
+<li><strong>Failure mode</strong>: Unsafe ZIP rejected, error shown to user</li>
+</ul>
+<h3 id="9-extract-to-temp">9. Extract to Temp</h3>
+<ul>
+<li><strong>What</strong>: Safely extracts ZIP contents to temporary directory</li>
+<li><strong>Where</strong>: <code>_safe_extract_zip()</code></li>
+<li><strong>Security</strong>: Each entry validated to stay within extract directory</li>
+<li><strong>Skips</strong>: <code>__MACOSX</code> metadata folders</li>
+<li><strong>Failure mode</strong>: Extraction error, partial cleanup, error shown</li>
+</ul>
+<h3 id="10-verify-skill-md">10. Verify SKILL.md</h3>
+<ul>
+<li><strong>What</strong>: Validates extracted layout contains required <code>SKILL.md</code></li>
+<li><strong>Where</strong>: <code>_determine_extracted_root()</code></li>
+<li><strong>Layouts supported</strong>:</li>
+<li>Files at ZIP root with <code>SKILL.md</code></li>
+<li>Single top-level folder containing <code>SKILL.md</code></li>
+<li><strong>Failure mode</strong>: Missing <code>SKILL.md</code>, installation aborted</li>
+</ul>
+<h3 id="11-move-to-skills-directory">11. Move to Skills Directory</h3>
+<ul>
+<li><strong>What</strong>: Copies extracted content to <code>~/.code_puppy/skills/&lt;skill_id&gt;/</code></li>
+<li><strong>Where</strong>: <code>_stage_normalized_install()</code> → <code>shutil.move()</code></li>
+<li><strong>Overwrite</strong>: Existing install deleted if <code>force=True</code></li>
+<li><strong>Failure mode</strong>: Move error, partial install cleaned up</li>
+</ul>
+<h3 id="12-refresh-cache">12. Refresh Cache</h3>
+<ul>
+<li><strong>What</strong>: Updates local skill cache so new skill is immediately available</li>
+<li><strong>Where</strong>: <code>refresh_skill_cache()</code></li>
+<li><strong>Note</strong>: Cache refresh failure doesn't poison successful install</li>
+<li><strong>Failure mode</strong>: Logged as warning, install still succeeds</li>
+</ul>
+<h2 id="data-transformations">Data Transformations</h2>
+<table>
+<thead><tr>
+<th>Stage</th>
+<th>Input</th>
+<th>Output</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Catalog fetch</td>
+<td>Remote JSON</td>
+<td><code>SkillCatalogEntry[]</code></td>
+<td><code>remote_catalog.py</code></td>
+</tr>
+<tr>
+<td>Category browse</td>
+<td>Category name</td>
+<td><code>SkillCatalogEntry[]</code></td>
+<td><code>SkillCatalog.get_by_category()</code></td>
+</tr>
+<tr>
+<td>Download</td>
+<td>URL</td>
+<td>Local ZIP file</td>
+<td><code>_download_to_file()</code></td>
+</tr>
+<tr>
+<td>Extract</td>
+<td>ZIP file</td>
+<td>Extracted directory</td>
+<td><code>_safe_extract_zip()</code></td>
+</tr>
+<tr>
+<td>Normalize</td>
+<td>Extracted root</td>
+<td>Staged skill dir</td>
+<td><code>_stage_normalized_install()</code></td>
+</tr>
+<tr>
+<td>Install</td>
+<td>Staged dir</td>
+<td><code>~/.code_puppy/skills/&lt;id&gt;/</code></td>
+<td><code>shutil.move()</code></td>
+</tr>
+</tbody></table>
+<h2 id="failure-handling">Failure Handling</h2>
+<table>
+<thead><tr>
+<th>Failure Point</th>
+<th>Detection</th>
+<th>Recovery</th>
+<th>Alert?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Catalog unavailable</td>
+<td>Exception during fetch</td>
+<td>Show empty menu</td>
+<td>Info message</td>
+</tr>
+<tr>
+<td>Download failure</td>
+<td>HTTP error, timeout</td>
+<td>Return <code>InstallResult</code></td>
+<td>Error message</td>
+</tr>
+<tr>
+<td>Unsafe ZIP</td>
+<td>Path traversal detected</td>
+<td>Reject, don't extract</td>
+<td>Warning + error</td>
+</tr>
+<tr>
+<td>Invalid ZIP</td>
+<td><code>BadZipFile</code> exception</td>
+<td>Return error</td>
+<td>Error message</td>
+</tr>
+<tr>
+<td>Missing SKILL.md</td>
+<td>File not found after extract</td>
+<td>Abort, cleanup</td>
+<td>Error message</td>
+</tr>
+<tr>
+<td>Move failure</td>
+<td><code>shutil.move()</code> exception</td>
+<td>Cleanup partial install</td>
+<td>Error message</td>
+</tr>
+<tr>
+<td>Cache refresh</td>
+<td>Exception</td>
+<td>Log warning, continue</td>
+<td>Warning only</td>
+</tr>
+</tbody></table>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Typical duration</strong>: 5-30 seconds (depends on ZIP size and network)</li>
+<li><strong>Bottlenecks</strong>: Network download speed, ZIP extraction (single-threaded)</li>
+<li><strong>Memory</strong>: ZIP size + extraction size (capped at 50MB uncompressed)</li>
+<li><strong>Disk</strong>: Temporary storage in system temp, then final location</li>
+</ul>
+<h2 id="debugging-this-flow">Debugging This Flow</h2>
+<h3 id="key-log-messages">Key Log Messages</h3>
+<table>
+<thead><tr>
+<th>Message</th>
+<th>Meaning</th>
+<th>Action</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>Failed to fetch remote catalog: {e}</code></td>
+<td>Network/cache issue</td>
+<td>Check network, retry</td>
+</tr>
+<tr>
+<td><code>Rejected unsafe zip for {name}: {reason}</code></td>
+<td>Security block</td>
+<td>Verify ZIP source</td>
+</tr>
+<tr>
+<td><code>Downloaded file is not a valid zip</code></td>
+<td>Corrupted download</td>
+<td>Retry download</td>
+</tr>
+<tr>
+<td><code>Extracted zip missing SKILL.md</code></td>
+<td>Invalid skill package</td>
+<td>Contact skill author</td>
+</tr>
+<tr>
+<td><code>Installed skill '{name}' into {path}</code></td>
+<td>Success</td>
+<td>Verify with <code>/skills list</code></td>
+</tr>
+</tbody></table>
+<h3 id="common-issues">Common Issues</h3>
+<table>
+<thead><tr>
+<th>Symptom</th>
+<th>Likely Cause</th>
+<th>Fix</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>"No remote categories available"</td>
+<td>Network down, cache empty</td>
+<td>Check network, wait for cache</td>
+</tr>
+<tr>
+<td>Download hangs</td>
+<td>Slow/unreachable server</td>
+<td>Cancel, retry later</td>
+</tr>
+<tr>
+<td>"Unsafe zip entry"</td>
+<td>Malicious or malformed ZIP</td>
+<td>Don't install, report issue</td>
+</tr>
+<tr>
+<td>"Failed to extract"</td>
+<td>Corrupted ZIP</td>
+<td>Retry download</td>
+</tr>
+<tr>
+<td>Skill not appearing after install</td>
+<td>Cache not refreshed</td>
+<td>Run <code>/skills refresh</code> manually</td>
+</tr>
+</tbody></table>
+<h3 id="manual-verification">Manual Verification</h3>
+<pre><code class="language-bash"># Check if skill is installed
+ls -la ~/.code_puppy/skills/&lt;skill_id&gt;/
+
+# Verify SKILL.md exists
+cat ~/.code_puppy/skills/&lt;skill_id&gt;/SKILL.md
+
+# Refresh cache manually
+code_puppy /skills refresh</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/SkillInstallation.html">Feature: Skill Installation</a></li>
+<li><a href="../Features/SkillUsage.html">Feature: Skill Usage</a></li>
+<li><a href="../Concepts/AgentSkills.html">Concept: Agent Skills</a></li>
+<li><a href="../Guides/InstallSkills.html">Guide: Install Skills</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

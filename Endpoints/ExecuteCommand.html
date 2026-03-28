@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Endpoint: POST /api/commands/execute — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="CommandAutocomplete.html">Command Autocomplete</a>
+<a href="DeleteConfigKey.html">Delete Config Key</a>
+<a href="DeleteSession.html">Delete Session</a>
+<a href="ExecuteCommand.html" class="active">Execute Command</a>
+<a href="GetCommand.html">Get Command</a>
+<a href="GetConfig.html">Get Config</a>
+<a href="GetConfigKey.html">Get Config Key</a>
+<a href="GetSession.html">Get Session</a>
+<a href="GetSessionMessages.html">Get Session Messages</a>
+<a href="ListAgents.html">List Agents</a>
+<a href="ListCommands.html">List Commands</a>
+<a href="ListConfigKeys.html">List Config Keys</a>
+<a href="ListSessions.html">List Sessions</a>
+<a href="SetConfigKey.html">Set Config Key</a>
+<a href="index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="endpoint-post-api-commands-execute">Endpoint: POST /api/commands/execute</h1>
+<h2 id="overview">Overview</h2>
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Method</td>
+<td><code>POST</code></td>
+</tr>
+<tr>
+<td>Path</td>
+<td><code>/api/commands/execute</code></td>
+</tr>
+<tr>
+<td>Auth</td>
+<td><code>public</code></td>
+</tr>
+<tr>
+<td>Rate Limit</td>
+<td><code>N/A</code></td>
+</tr>
+</tbody></table>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Executes a slash command (e.g., <code>/set model=gpt-4o</code>) via the REST API. This allows external tools and web interfaces to trigger Code Puppy's built-in commands without using the terminal UI.</p>
+<h2 id="request">Request</h2>
+<h3 id="headers">Headers</h3>
+<table>
+<thead><tr>
+<th>Header</th>
+<th>Required</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Content-Type</td>
+<td>yes</td>
+<td><code>application/json</code></td>
+</tr>
+</tbody></table>
+<h3 id="path-parameters">Path Parameters</h3>
+<p>None</p>
+<h3 id="query-parameters">Query Parameters</h3>
+<p>None</p>
+<h3 id="request-body">Request Body</h3>
+<pre><code class="language-json">{
+  "command": "string - Full command string with or without leading /"
+}</code></pre>
+<h3 id="example-request-body">Example Request Body</h3>
+<pre><code class="language-json">{
+  "command": "/set model=gpt-4o"
+}</code></pre>
+<h3 id="validation-rules">Validation Rules</h3>
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Rules</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>command</code></td>
+<td>Required, non-empty string. Leading <code>/</code> is optional.</td>
+</tr>
+</tbody></table>
+<h2 id="response">Response</h2>
+<h3 id="success-response-200">Success Response (200)</h3>
+<pre><code class="language-json">{
+  "success": true,
+  "result": "Command output or return value",
+  "error": null
+}</code></pre>
+<h3 id="error-response-200-with-failure">Error Response (200 with failure)</h3>
+<pre><code class="language-json">{
+  "success": false,
+  "result": null,
+  "error": "Error message describing what went wrong"
+}</code></pre>
+<h3 id="error-scenarios">Error Scenarios</h3>
+<table>
+<thead><tr>
+<th>Status</th>
+<th>When</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>200 (success=false)</td>
+<td>Command execution failed</td>
+</tr>
+<tr>
+<td>200 (timeout)</td>
+<td>Command timed out after 30s</td>
+</tr>
+<tr>
+<td>400</td>
+<td>Invalid request body</td>
+</tr>
+</tbody></table>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Layer</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Route definition</td>
+<td><code>code_puppy/api/routers/commands.py</code></td>
+<td>Line 95-119</td>
+</tr>
+<tr>
+<td>Request validation</td>
+<td>Pydantic <code>CommandExecuteRequest</code></td>
+<td>Auto-validated by FastAPI</td>
+</tr>
+<tr>
+<td>Command dispatch</td>
+<td><code>code_puppy/command_line/command_handler.py</code></td>
+<td><code>handle_command()</code></td>
+</tr>
+<tr>
+<td>Command registry</td>
+<td><code>code_puppy/command_line/command_registry.py</code></td>
+<td>Dynamic lookup</td>
+</tr>
+<tr>
+<td>Thread pool</td>
+<td><code>code_puppy/api/routers/commands.py</code></td>
+<td><code>ThreadPoolExecutor</code></td>
+</tr>
+</tbody></table>
+<h2 id="flow">Flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant Client
+    participant Router
+    participant Handler
+    participant Registry
+    participant Plugin
+    participant Command
+    
+    Client-&gt;&gt;Router: POST /api/commands/execute
+    Router-&gt;&gt;Router: Validate request body
+    Router-&gt;&gt;Router: Strip leading / if present
+    Router-&gt;&gt;Handler: handle_command(command)
+    Handler-&gt;&gt;Registry: get_command(cmd_name)
+    Registry--&gt;&gt;Handler: CommandInfo
+    alt Command found
+        Handler-&gt;&gt;Command: Execute handler()
+        Command--&gt;&gt;Handler: Result
+    else Command not found
+        Handler-&gt;&gt;Plugin: on_custom_command()
+        alt Plugin handles
+            Plugin--&gt;&gt;Handler: True or string
+        else Unknown
+            Handler--&gt;&gt;Handler: emit_warning()
+        end
+    end
+    Handler--&gt;&gt;Router: Result
+    Router-&gt;&gt;Router: Wrap in CommandExecuteResponse
+    Router--&gt;&gt;Client: JSON response
+</pre>
+<h2 id="examples">Examples</h2>
+<h3 id="example-request">Example Request</h3>
+<pre><code class="language-bash">curl -X POST 'http://localhost:8000/api/commands/execute' \
+  -H 'Content-Type: application/json' \
+  -d '{"command": "/set model=gpt-4o"}'</code></pre>
+<h3 id="example-success-response">Example Success Response</h3>
+<pre><code class="language-json">{
+  "success": true,
+  "result": true,
+  "error": null
+}</code></pre>
+<h3 id="example-command-not-found-response">Example Command Not Found Response</h3>
+<pre><code class="language-json">{
+  "success": false,
+  "result": null,
+  "error": "Unknown command: /unknown_cmd"
+}</code></pre>
+<h3 id="example-timeout-response">Example Timeout Response</h3>
+<pre><code class="language-json">{
+  "success": false,
+  "result": null,
+  "error": "Command timed out after 30.0s"
+}</code></pre>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>30-second timeout</strong>: Long-running commands will be terminated. Use this endpoint for quick configuration commands, not for triggering agent runs.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Leading slash is optional</strong>: Both <code>/set model=gpt-4o</code> and <code>set model=gpt-4o</code> work identically.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Plugin commands</strong>: Unknown commands are passed to plugins via the <code>custom_command</code> callback before returning "unknown command" warning.</p>
+</div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="ListCommands.html">Endpoint: GET /api/commands</a> - List all available commands</li>
+<li><a href="GetCommand.html">Endpoint: GET /api/commands/{name}</a> - Get info about specific command</li>
+<li><a href="CommandAutocomplete.html">Endpoint: POST /api/commands/autocomplete</a> - Get autocomplete suggestions</li>
+<li><a href="../Features/HookSystem.html">Feature: Hook System</a> - How plugins can provide custom commands</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

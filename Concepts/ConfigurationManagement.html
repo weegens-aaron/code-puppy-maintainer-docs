@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept: Configuration Management — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="AgentArchitecture.html">Agent Architecture</a>
+<a href="CallbackSystem.html">Callback System</a>
+<a href="ConfigurationManagement.html" class="active">Configuration Management</a>
+<a href="ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="MCPIntegration.html">MCPIntegration</a>
+<a href="ToolRegistration.html">Tool Registration</a>
+<a href="index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="concept-configuration-management">Concept: Configuration Management</h1>
+<h2 id="what-is-this">What Is This?</h2>
+<p>Configuration Management is the system that stores, retrieves, and manages Code Puppy's user settings. It uses a hierarchical approach with <strong>file-based configuration</strong> (<code>puppy.cfg</code>), <strong>environment variables</strong>, and <strong>runtime defaults</strong> to provide flexible, persistent settings across sessions.</p>
+<h2 id="why-this-approach">Why This Approach?</h2>
+<p>The configuration system uses <strong>XDG Base Directory</strong> specification with <strong>INI file format</strong> to:</p>
+<ul>
+<li><strong>Follow standards</strong>: XDG paths are familiar to Linux/Unix users</li>
+<li><strong>Enable persistence</strong>: Settings survive across sessions</li>
+<li><strong>Support overrides</strong>: Environment variables can override file settings</li>
+<li><strong>Provide defaults</strong>: Sensible defaults when config is missing</li>
+<li><strong>Allow customization</strong>: Users can tune behavior via config file</li>
+</ul>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="the-pattern">The Pattern</h3>
+<pre class="mermaid">
+flowchart TB
+    subgraph Sources["Configuration Sources"]
+        Env[Environment Variables]
+        File[puppy.cfg]
+        Default[Runtime Defaults]
+    end
+    
+    subgraph Resolution["Resolution Order"]
+        Check1{Env var set?}
+        Check2{Config file exists?}
+        Check3{Key in config?}
+    end
+    
+    subgraph Storage["Storage Locations"]
+        Config[~/.code_puppy/puppy.cfg]
+        Models[~/.code_puppy/models.json]
+        MCP[~/.code_puppy/mcp_servers.json]
+    end
+    
+    Env --&gt; Check1
+    Check1 --&gt;|Yes| Env
+    Check1 --&gt;|No| Check2
+    Check2 --&gt;|Yes| Check3
+    Check2 --&gt;|No| Default
+    Check3 --&gt;|Yes| File
+    Check3 --&gt;|No| Default
+    
+    File --&gt; Config
+    Models --&gt; Models
+    MCP --&gt; MCP
+</pre>
+<h3 id="example">Example</h3>
+<pre><code class="language-python"># Read a config value
+from code_puppy.config import get_value
+
+# Returns value from puppy.cfg or None
+verbose = get_value("enable_streaming")
+
+# Returns True/False with default
+verbose = get_value("enable_streaming") or True
+
+# Check boolean config
+if str(verbose).lower() in ("1", "true", "yes", "on"):
+    print("Streaming enabled")</code></pre>
+<h2 id="where-it-s-used">Where It's Used</h2>
+<table>
+<thead><tr>
+<th>Feature/Flow</th>
+<th>How It Uses This</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><a href="../Flows/AgentExecution.html">Agent Execution</a></td>
+<td>Loads model, tools, settings from config</td>
+</tr>
+<tr>
+<td><a href="../Features/ModelConfiguration.html">Model Configuration</a></td>
+<td>Reads model selection and settings</td>
+</tr>
+<tr>
+<td><a href="../Features/PluginDevelopment.html">Plugin Development</a></td>
+<td>Plugins read config for behavior</td>
+</tr>
+<tr>
+<td><a href="Flows/SessionManagement.html">Session Management</a></td>
+<td>Saves/restores sessions from config</td>
+</tr>
+</tbody></table>
+<h2 id="implementation-locations">Implementation Locations</h2>
+<table>
+<thead><tr>
+<th>Aspect</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Core functions</td>
+<td><code>code_puppy/config.py</code></td>
+</tr>
+<tr>
+<td>Config file</td>
+<td><code>~/.code_puppy/puppy.cfg</code></td>
+</tr>
+<tr>
+<td>XDG dirs</td>
+<td><code>code_puppy/config.py</code> → <code>CONFIG_DIR</code>, <code>DATA_DIR</code>, etc.</td>
+</tr>
+<tr>
+<td>API endpoints</td>
+<td><code>code_puppy/api/routers/config.py</code></td>
+</tr>
+<tr>
+<td>Config wizard</td>
+<td><code>code_puppy/command_line/config_wizard.py</code></td>
+</tr>
+</tbody></table>
+<h2 id="storage-locations">Storage Locations</h2>
+<h3 id="xdg-base-directories">XDG Base Directories</h3>
+<table>
+<thead><tr>
+<th>Directory</th>
+<th>Environment Variable</th>
+<th>Default Path</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Config</td>
+<td><code>XDG_CONFIG_HOME</code></td>
+<td><code>~/.code_puppy/</code></td>
+<td>Configuration files</td>
+</tr>
+<tr>
+<td>Data</td>
+<td><code>XDG_DATA_HOME</code></td>
+<td><code>~/.code_puppy/</code></td>
+<td>User data</td>
+</tr>
+<tr>
+<td>Cache</td>
+<td><code>XDG_CACHE_HOME</code></td>
+<td><code>~/.code_puppy/</code></td>
+<td>Cached data</td>
+</tr>
+<tr>
+<td>State</td>
+<td><code>XDG_STATE_HOME</code></td>
+<td><code>~/.code_puppy/</code></td>
+<td>State files</td>
+</tr>
+</tbody></table>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Legacy mode</strong>: By default, all files go to <code>~/.code_puppy/</code>. XDG paths are only used when environment variables are explicitly set.</p>
+</div>
+<h3 id="configuration-files">Configuration Files</h3>
+<table>
+<thead><tr>
+<th>File</th>
+<th>Location</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>puppy.cfg</code></td>
+<td><code>CONFIG_DIR</code></td>
+<td>Main configuration</td>
+</tr>
+<tr>
+<td><code>models.json</code></td>
+<td><code>DATA_DIR</code></td>
+<td>Model configurations</td>
+</tr>
+<tr>
+<td><code>mcp_servers.json</code></td>
+<td><code>CONFIG_DIR</code></td>
+<td>MCP server configs</td>
+</tr>
+<tr>
+<td><code>extra_models.json</code></td>
+<td><code>DATA_DIR</code></td>
+<td>Custom model definitions</td>
+</tr>
+<tr>
+<td><code>agents/</code></td>
+<td><code>DATA_DIR</code></td>
+<td>JSON agent configs</td>
+</tr>
+<tr>
+<td><code>skills/</code></td>
+<td><code>DATA_DIR</code></td>
+<td>Skill definitions</td>
+</tr>
+</tbody></table>
+<h2 id="configuration-format">Configuration Format</h2>
+<h3 id="ini-file-format">INI File Format</h3>
+<pre><code class="language-ini">[puppy]
+puppy_name = Code Puppy
+owner_name = Developer
+model = gpt-5.3-codex
+enable_streaming = true
+enable_universal_constructor = true
+enable_pack_agents = false
+compaction_strategy = summarize
+protected_token_count = 100000
+compaction_threshold = 120000</code></pre>
+<h3 id="boolean-values">Boolean Values</h3>
+<p>Accepted values (case-insensitive):</p>
+<ul>
+<li><strong>True</strong>: <code>1</code>, <code>true</code>, <code>yes</code>, <code>on</code></li>
+<li><strong>False</strong>: <code>0</code>, <code>false</code>, <code>no</code>, <code>off</code>, or missing</li>
+</ul>
+<h3 id="reading-config">Reading Config</h3>
+<pre><code class="language-python">from code_puppy.config import get_value
+
+# Get raw value (string or None)
+model = get_value("model")
+
+# Get boolean with default
+streaming = get_value("enable_streaming")
+if streaming is None:
+    streaming = True  # Default
+else:
+    streaming = str(streaming).lower() in ("1", "true", "yes", "on")
+
+# Helper function for booleans
+from code_puppy.config import get_enable_streaming
+streaming = get_enable_streaming()  # Returns True/False</code></pre>
+<h3 id="setting-config">Setting Config</h3>
+<pre><code class="language-python">from code_puppy.config import set_value
+
+# Set a value
+set_value("model", "gpt-5.3-codex")
+set_value("enable_streaming", "true")
+
+# Helper function for booleans
+from code_puppy.config import set_universal_constructor_enabled
+set_universal_constructor_enabled(True)</code></pre>
+<h2 id="common-configuration-keys">Common Configuration Keys</h2>
+<h3 id="core-settings">Core Settings</h3>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>puppy_name</code></td>
+<td>string</td>
+<td>"Puppy"</td>
+<td>Name for the assistant</td>
+</tr>
+<tr>
+<td><code>owner_name</code></td>
+<td>string</td>
+<td>"Master"</td>
+<td>User's name</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>string</td>
+<td>-</td>
+<td>Default AI model</td>
+</tr>
+<tr>
+<td><code>default_agent</code></td>
+<td>string</td>
+<td>"code-puppy"</td>
+<td>Default agent</td>
+</tr>
+</tbody></table>
+<h3 id="feature-flags">Feature Flags</h3>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>enable_streaming</code></td>
+<td>boolean</td>
+<td>true</td>
+<td>Enable SSE streaming</td>
+</tr>
+<tr>
+<td><code>enable_universal_constructor</code></td>
+<td>boolean</td>
+<td>true</td>
+<td>Enable UC tool</td>
+</tr>
+<tr>
+<td><code>enable_pack_agents</code></td>
+<td>boolean</td>
+<td>false</td>
+<td>Enable pack agents</td>
+</tr>
+<tr>
+<td><code>allow_recursion</code></td>
+<td>boolean</td>
+<td>true</td>
+<td>Allow recursive calls</td>
+</tr>
+</tbody></table>
+<h3 id="memory-management">Memory Management</h3>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>compaction_strategy</code></td>
+<td>string</td>
+<td>"summarize"</td>
+<td>How to compact history</td>
+</tr>
+<tr>
+<td><code>protected_token_count</code></td>
+<td>int</td>
+<td>100000</td>
+<td>Tokens to protect</td>
+</tr>
+<tr>
+<td><code>compaction_threshold</code></td>
+<td>int</td>
+<td>120000</td>
+<td>When to compact</td>
+</tr>
+<tr>
+<td><code>message_limit</code></td>
+<td>int</td>
+<td>-</td>
+<td>Max messages (deprecated)</td>
+</tr>
+</tbody></table>
+<h3 id="session-management">Session Management</h3>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>auto_save_session</code></td>
+<td>boolean</td>
+<td>true</td>
+<td>Auto-save sessions</td>
+</tr>
+<tr>
+<td><code>max_saved_sessions</code></td>
+<td>int</td>
+<td>10</td>
+<td>Max saved sessions</td>
+</tr>
+</tbody></table>
+<h3 id="model-settings">Model Settings</h3>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>openai_reasoning_effort</code></td>
+<td>string</td>
+<td>"medium"</td>
+<td>GPT reasoning level</td>
+</tr>
+<tr>
+<td><code>openai_verbosity</code></td>
+<td>string</td>
+<td>"medium"</td>
+<td>Response verbosity</td>
+</tr>
+<tr>
+<td><code>temperature</code></td>
+<td>float</td>
+<td>-</td>
+<td>Model temperature</td>
+</tr>
+</tbody></table>
+<h2 id="environment-variables">Environment Variables</h2>
+<h3 id="xdg-directories">XDG Directories</h3>
+<table>
+<thead><tr>
+<th>Variable</th>
+<th>Purpose</th>
+<th>Example</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>XDG_CONFIG_HOME</code></td>
+<td>Config directory</td>
+<td><code>/etc/xdg</code></td>
+</tr>
+<tr>
+<td><code>XDG_DATA_HOME</code></td>
+<td>Data directory</td>
+<td><code>/var/lib</code></td>
+</tr>
+<tr>
+<td><code>XDG_CACHE_HOME</code></td>
+<td>Cache directory</td>
+<td><code>/var/cache</code></td>
+</tr>
+<tr>
+<td><code>XDG_STATE_HOME</code></td>
+<td>State directory</td>
+<td><code>/var/lib/state</code></td>
+</tr>
+</tbody></table>
+<h3 id="application-settings">Application Settings</h3>
+<table>
+<thead><tr>
+<th>Variable</th>
+<th>Purpose</th>
+<th>Example</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>DBOS_SYSTEM_DATABASE_URL</code></td>
+<td>Database URL</td>
+<td><code>sqlite:///db.sqlite</code></td>
+</tr>
+</tbody></table>
+<h2 id="conventions-rules">Conventions &amp; Rules</h2>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Boolean format</strong>: Use lowercase <code>true</code>/<code>false</code> in config files</p>
+</div>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Section name</strong>: All keys must be under <code>[puppy]</code> section</p>
+</div>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Required keys</strong>: <code>puppy_name</code> and <code>owner_name</code> must exist</p>
+</div>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Case sensitivity</strong>: Keys are case-sensitive</p>
+</div>
+<h2 id="anti-patterns-to-avoid">Anti-Patterns to Avoid</h2>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't hardcode values</strong>: Always use <code>get_value()</code> or helper functions</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't assume types</strong>: Config values are strings, convert as needed</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't ignore None</strong>: <code>get_value()</code> returns None if key doesn't exist</p>
+</div>
+<h2 id="extending-this">Extending This</h2>
+<p>To add a new configuration key:</p>
+<ol>
+<li><strong>Add to config file</strong> (optional, will be created if missing): ```ini [puppy] my_new_feature = true ```</li>
+</ol>
+<ol>
+<li><strong>Create getter function</strong> in <code>code_puppy/config.py</code>: ```python def get_my_new_feature() -&gt; bool: val = get_value("my_new_feature") if val is None: return True  # Default return str(val).lower() in ("1", "true", "yes", "on") ```</li>
+</ol>
+<ol>
+<li><strong>Create setter function</strong> (optional): ```python def set_my_new_feature(enabled: bool) -&gt; None: set_value("my_new_feature", "true" if enabled else "false") ```</li>
+</ol>
+<ol>
+<li><strong>Document the key</strong> in this concept doc</li>
+</ol>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/ModelConfiguration.html">Feature: Model Configuration</a></li>
+<li><a href="../Features/PluginDevelopment.html">Feature: Plugin Development</a></li>
+<li><a href="Flows/SessionManagement.html">Flow: Session Management</a></li>
+<li><a href="../Endpoints/GetConfigKey.html">Endpoint: GET /api/config/{key}</a></li>
+<li><a href="../Endpoints/SetConfigKey.html">Endpoint: PUT /api/config/{key}</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

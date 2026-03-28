@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: Plugin Development — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="AgentCreation.html">Agent Creation</a>
+<a href="AgentSwitching.html">Agent Switching</a>
+<a href="BrowserControl.html">Browser Control</a>
+<a href="CustomSkills.html">Custom Skills</a>
+<a href="HookSystem.html">Hook System</a>
+<a href="JSONAgents.html">JSONAgents</a>
+<a href="MCPManagement.html">MCPManagement</a>
+<a href="MPCCatalog.html">MPCCatalog</a>
+<a href="ModelConfiguration.html">Model Configuration</a>
+<a href="ModelDiscovery.html">Model Discovery</a>
+<a href="PluginDevelopment.html" class="active">Plugin Development</a>
+<a href="PythonAgents.html">Python Agents</a>
+<a href="RoundRobinModels.html">Round Robin Models</a>
+<a href="SkillInstallation.html">Skill Installation</a>
+<a href="SkillUsage.html">Skill Usage</a>
+<a href="TaskScheduling.html">Task Scheduling</a>
+<a href="TerminalIntegration.html">Terminal Integration</a>
+<a href="UniversalConstructor.html">Universal Constructor</a>
+<a href="index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-plugin-development">Feature: Plugin Development</h1>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Plugins allow you to extend Code Puppy's functionality without modifying core code. They can add custom commands, tools, agents, model types, and hook into every stage of the system's operation through a comprehensive callback system.</p>
+<h2 id="why-does-this-exist">Why Does This Exist?</h2>
+<p>Code Puppy is designed to be highly extensible. Instead of forking the project or editing core files, you can:</p>
+<ul>
+<li>Add custom slash commands (e.g., <code>/mycommand</code>)</li>
+<li>Register new tools for agents to use</li>
+<li>Create custom agents</li>
+<li>Add new model types (e.g., custom LLM providers)</li>
+<li>Hook into system events (startup, tool calls, streaming, etc.)</li>
+<li>Inject custom content into system prompts</li>
+</ul>
+<p>This keeps core stable while enabling unlimited customization.</p>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<ol>
+<li>Create a plugin directory at <code>~/.code_puppy/plugins/my_plugin/</code></li>
+<li>Add a <code>register_callbacks.py</code> file</li>
+<li>Register callbacks for the hooks you want to use</li>
+<li>Code Puppy auto-discovers and loads the plugin on startup</li>
+</ol>
+<h3 id="system-perspective">System Perspective</h3>
+<pre class="mermaid">
+flowchart TD
+    A[Code Puppy Startup] --&gt; B[Load Builtin Plugins]
+    B --&gt; C[Load User Plugins]
+    C --&gt; D[Plugins Register Callbacks]
+    D --&gt; E[Callbacks Stored in Registry]
+    E --&gt; F[System Events Trigger Callbacks]
+    F --&gt; G[Plugin Code Executes]
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Responsibility</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Plugin loader</td>
+<td><code>code_puppy/plugins/__init__.py</code></td>
+<td>Auto-discovers plugins</td>
+</tr>
+<tr>
+<td>Callback registry</td>
+<td><code>code_puppy/callbacks.py</code></td>
+<td>Central callback management</td>
+</tr>
+<tr>
+<td>Hook engine</td>
+<td><code>code_puppy/hook_engine/</code></td>
+<td>Advanced hook execution system</td>
+</tr>
+<tr>
+<td>Example plugin</td>
+<td><code>code_puppy/plugins/example_custom_command/</code></td>
+<td>Simple custom command example</td>
+</tr>
+<tr>
+<td>Complex plugin</td>
+<td><code>code_puppy/plugins/agent_skills/</code></td>
+<td>Full-featured plugin with tools, commands, prompt injection</td>
+</tr>
+</tbody></table>
+<h2 id="plugin-structure">Plugin Structure</h2>
+<h3 id="basic-plugin-custom-command">Basic Plugin (Custom Command)</h3>
+<pre><code>~/.code_puppy/plugins/my_plugin/
+└── register_callbacks.py</code></pre>
+<h3 id="advanced-plugin-multiple-features">Advanced Plugin (Multiple Features)</h3>
+<pre><code>~/.code_puppy/plugins/my_plugin/
+├── register_callbacks.py      # Main entry point
+├── commands.py                # Command handlers
+├── tools.py                   # Tool definitions
+├── models.py                  # Pydantic models
+├── utils.py                   # Helper functions
+└── README.md                  # Plugin documentation</code></pre>
+<h2 id="available-hooks">Available Hooks</h2>
+<p>See [<code>code_puppy/callbacks.py</code>](../code_puppy/callbacks.py) for the complete list. Key hooks include:</p>
+<table>
+<thead><tr>
+<th>Hook</th>
+<th>When</th>
+<th>Use Case</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>startup</code></td>
+<td>App boot</td>
+<td>Initialize resources, log startup</td>
+</tr>
+<tr>
+<td><code>shutdown</code></td>
+<td>Graceful exit</td>
+<td>Cleanup, save state</td>
+</tr>
+<tr>
+<td><code>custom_command</code></td>
+<td>Unknown <code>/slash</code> cmd</td>
+<td>Add custom commands</td>
+</tr>
+<tr>
+<td><code>custom_command_help</code></td>
+<td><code>/help</code> menu</td>
+<td>Add help entries</td>
+</tr>
+<tr>
+<td><code>register_tools</code></td>
+<td>Tool registration</td>
+<td>Add new agent tools</td>
+</tr>
+<tr>
+<td><code>register_agents</code></td>
+<td>Agent catalogue</td>
+<td>Add custom agents</td>
+</tr>
+<tr>
+<td><code>register_model_type</code></td>
+<td>Model creation</td>
+<td>Add custom model types</td>
+</tr>
+<tr>
+<td><code>pre_tool_call</code></td>
+<td>Before tool executes</td>
+<td>Log, validate, modify</td>
+</tr>
+<tr>
+<td><code>post_tool_call</code></td>
+<td>After tool finishes</td>
+<td>Log results, metrics</td>
+</tr>
+<tr>
+<td><code>stream_event</code></td>
+<td>Response streaming</td>
+<td>Real-time event processing</td>
+</tr>
+<tr>
+<td><code>agent_run_start</code></td>
+<td>Agent task begins</td>
+<td>Setup, tracking</td>
+</tr>
+<tr>
+<td><code>agent_run_end</code></td>
+<td>Agent task ends</td>
+<td>Cleanup, analytics</td>
+</tr>
+<tr>
+<td><code>get_model_system_prompt</code></td>
+<td>Prompt assembly</td>
+<td>Inject custom content</td>
+</tr>
+</tbody></table>
+<h2 id="configuration">Configuration</h2>
+<p>Plugins read configuration from:</p>
+<ul>
+<li><code>~/.code_puppy/config.json</code> - Global config</li>
+<li>Plugin-specific config files in plugin directory</li>
+</ul>
+<p>Example config injection:</p>
+<pre><code class="language-python">from code_puppy.config import get_config
+
+def my_handler():
+    config = get_config()
+    my_setting = config.get("my_plugin", {}).get("setting", "default")</code></pre>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Callbacks are deduplicated</strong> - The same callback function registered twice will only fire once. This prevents duplicate registrations if plugins are accidentally loaded multiple times.</p>
+</div>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p>**Return <code>None</code> for unhandled commands** - In <code>custom_command</code> handlers, return <code>None</code> if you don't recognize the command. Return <code>True</code> if you handled it (no further action needed).</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Sync vs Async</strong> - Callbacks can be sync or async. The system handles both. Async callbacks receive <code>await</code> automatically.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Plugin loading is idempotent</strong> - Plugins are only loaded once per session. Subsequent calls to <code>load_plugin_callbacks()</code> return empty lists.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead><tr>
+<th>Scenario</th>
+<th>Behavior</th>
+<th>User Sees</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Plugin raises exception on load</td>
+<td>Logged as error, plugin skipped</td>
+<td>Warning in logs</td>
+</tr>
+<tr>
+<td>Callback raises exception</td>
+<td>Logged as error, other callbacks continue</td>
+<td>Error in logs</td>
+</tr>
+<tr>
+<td>Invalid hook name</td>
+<td><code>ValueError</code> raised during registration</td>
+<td>Python error</td>
+</tr>
+</tbody></table>
+<h2 id="testing-this-feature">Testing This Feature</h2>
+<h3 id="manual-testing">Manual Testing</h3>
+<ol>
+<li>Create a test plugin at <code>~/.code_puppy/plugins/test_plugin/register_callbacks.py</code></li>
+<li>Add a simple callback: ```python from code_puppy.callbacks import register_callback  def _on_startup(): print("TEST PLUGIN LOADED!")  register_callback("startup", _on_startup) ```</li>
+<li>Restart Code Puppy</li>
+<li>Check logs for "TEST PLUGIN LOADED!"</li>
+</ol>
+<h3 id="programmatic-testing">Programmatic Testing</h3>
+<pre><code class="language-python">from code_puppy.callbacks import count_callbacks, get_callbacks
+
+# Check how many callbacks registered for a hook
+count = count_callbacks("startup")
+print(f"Startup callbacks: {count}")
+
+# Get specific callbacks
+callbacks = get_callbacks("custom_command")
+print(f"Custom command handlers: {len(callbacks)}")</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="HookSystem.html">Feature: Hook System</a> - Core callback mechanism</li>
+<li><a href="../Concepts/CallbackSystem.html">Concept: Callback System</a> - Callback architecture</li>
+<li><a href="../Guides/CreateHooks.html">Guide: Create Hooks</a> - User guide for creating hooks</li>
+<li><a href="../Guides/CreateSkills.html">Guide: Create Skills</a> - Creating agent skills</li>
+<li><a href="../Guides/CreateAgents.html">Guide: Create Agents</a> - Creating custom agents</li>
+</ul>
+<h2 id="examples">Examples</h2>
+<h3 id="example-1-simple-custom-command">Example 1: Simple Custom Command</h3>
+<pre><code class="language-python">from code_puppy.callbacks import register_callback
+from code_puppy.messaging import emit_info
+
+def _custom_help():
+    return [("hello", "Say hello to Code Puppy")]
+
+def _handle_command(command: str, name: str):
+    if name == "hello":
+        emit_info("👋 Hello! How can I help?")
+        return True
+    return None
+
+register_callback("custom_command_help", _custom_help)
+register_callback("custom_command", _handle_command)</code></pre>
+<h3 id="example-2-tool-interceptor">Example 2: Tool Interceptor</h3>
+<pre><code class="language-python">import logging
+from code_puppy.callbacks import register_callback
+
+logger = logging.getLogger(__name__)
+
+async def _log_tool_call(tool_name: str, tool_args: dict, context=None):
+    logger.info(f"Tool called: {tool_name} with args: {tool_args}")
+
+register_callback("pre_tool_call", _log_tool_call)</code></pre>
+<h3 id="example-3-custom-model-type">Example 3: Custom Model Type</h3>
+<pre><code class="language-python">from code_puppy.callbacks import register_callback
+
+def create_my_custom_model(model_name: str, model_config: dict, config: dict):
+    # Create and return your custom model instance
+    # Return None if this doesn't handle the model
+    if model_name.startswith("my-custom-"):
+        return MyCustomModel(model_name, model_config)
+    return None
+
+def _register_model_types():
+    return [{"type": "my-custom", "handler": create_my_custom_model}]
+
+register_callback("register_model_type", _register_model_types)</code></pre>
+<h3 id="example-4-agent-lifecycle-hooks">Example 4: Agent Lifecycle Hooks</h3>
+<pre><code class="language-python">from code_puppy.callbacks import register_callback
+from code_puppy.messaging import emit_success, emit_info
+
+async def _on_agent_start(agent_name: str, model_name: str, session_id=None):
+    emit_info(f"🚀 Agent '{agent_name}' starting with model '{model_name}'")
+
+async def _on_agent_end(agent_name: str, model_name: str, success=True, error=None, **kwargs):
+    if success:
+        emit_success(f"✅ Agent '{agent_name}' completed successfully")
+    else:
+        emit_info(f"❌ Agent '{agent_name}' failed: {error}")
+
+register_callback("agent_run_start", _on_agent_start)
+register_callback("agent_run_end", _on_agent_end)</code></pre>
+<h2 id="plugin-development-workflow">Plugin Development Workflow</h2>
+<ol>
+<li><strong>Plan</strong> - Decide what hooks you need</li>
+<li><strong>Create</strong> - Make plugin directory and <code>register_callbacks.py</code></li>
+<li><strong>Implement</strong> - Write callback functions</li>
+<li><strong>Test</strong> - Restart Code Puppy, verify behavior</li>
+<li><strong>Document</strong> - Add <code>README.md</code> with usage instructions</li>
+<li><strong>Distribute</strong> - Share via git repo or local install</li>
+</ol>
+<h2 id="best-practices">Best Practices</h2>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p>1. <strong>Keep it simple</strong> - One plugin, one responsibility 2. <strong>Fail gracefully</strong> - Wrap callbacks in try/except 3. <strong>Log appropriately</strong> - Use <code>logging</code> module, not <code>print()</code> 4. **Return <code>None</code><strong> - For callbacks you don't handle 5. </strong>Document** - Add <code>README.md</code> explaining usage</p>
+</div>
+<h2 id="plugin-discovery">Plugin Discovery</h2>
+<p>Code Puppy discovers plugins by:</p>
+<ol>
+<li>Scanning <code>code_puppy/plugins/</code> for builtin plugins</li>
+<li>Scanning <code>~/.code_puppy/plugins/</code> for user plugins</li>
+<li>Looking for directories containing <code>register_callbacks.py</code></li>
+<li>Importing each plugin module at startup</li>
+</ol>
+<p>Plugins without <code>register_callbacks.py</code> are ignored.</p>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

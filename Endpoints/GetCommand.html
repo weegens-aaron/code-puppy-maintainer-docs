@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Endpoint: GET /api/commands/{name} — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="CommandAutocomplete.html">Command Autocomplete</a>
+<a href="DeleteConfigKey.html">Delete Config Key</a>
+<a href="DeleteSession.html">Delete Session</a>
+<a href="ExecuteCommand.html">Execute Command</a>
+<a href="GetCommand.html" class="active">Get Command</a>
+<a href="GetConfig.html">Get Config</a>
+<a href="GetConfigKey.html">Get Config Key</a>
+<a href="GetSession.html">Get Session</a>
+<a href="GetSessionMessages.html">Get Session Messages</a>
+<a href="ListAgents.html">List Agents</a>
+<a href="ListCommands.html">List Commands</a>
+<a href="ListConfigKeys.html">List Config Keys</a>
+<a href="ListSessions.html">List Sessions</a>
+<a href="SetConfigKey.html">Set Config Key</a>
+<a href="index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="endpoint-get-api-commands-name">Endpoint: GET /api/commands/{name}</h1>
+<h2 id="overview">Overview</h2>
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Method</td>
+<td><code>GET</code></td>
+</tr>
+<tr>
+<td>Path</td>
+<td><code>/api/commands/{name}</code></td>
+</tr>
+<tr>
+<td>Auth</td>
+<td><code>public</code></td>
+</tr>
+<tr>
+<td>Rate Limit</td>
+<td><code>N/A</code></td>
+</tr>
+</tbody></table>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Retrieves detailed information about a specific slash command by its name or alias. This endpoint is useful for frontend tools or external integrations that need to understand the capabilities, usage, and help text for individual commands.</p>
+<h2 id="request">Request</h2>
+<h3 id="path-parameters">Path Parameters</h3>
+<table>
+<thead><tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>string</td>
+<td>Command name or alias (without leading <code>/</code>)</td>
+</tr>
+</tbody></table>
+<h3 id="example-requests">Example Requests</h3>
+<pre><code class="language-bash"># Get info about the 'set' command
+curl -X GET 'http://localhost:8000/api/commands/set'
+
+# Get info about an alias (e.g., 'ls' for 'list')
+curl -X GET 'http://localhost:8000/api/commands/ls'
+
+# Case-insensitive lookup
+curl -X GET 'http://localhost:8000/api/commands/SET'</code></pre>
+<h2 id="response">Response</h2>
+<h3 id="success-response-200-ok">Success Response (200 OK)</h3>
+<pre><code class="language-json">{
+  "name": "set",
+  "description": "Set a configuration value",
+  "usage": "/set &lt;key&gt;=&lt;value&gt;",
+  "aliases": ["config", "conf"],
+  "category": "config",
+  "detailed_help": "Sets a configuration key to a value. Use /list_configs to see available keys."
+}</code></pre>
+<h3 id="response-fields">Response Fields</h3>
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>string</td>
+<td>Canonical command name</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string</td>
+<td>Short description of what the command does</td>
+</tr>
+<tr>
+<td><code>usage</code></td>
+<td>string</td>
+<td>Usage pattern showing syntax</td>
+</tr>
+<tr>
+<td><code>aliases</code></td>
+<td>array</td>
+<td>Alternative names for this command</td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td>string</td>
+<td>Command category (e.g., "core", "config", "mcp")</td>
+</tr>
+<tr>
+<td><code>detailed_help</code></td>
+<td>string or null</td>
+<td>Extended help text, if available</td>
+</tr>
+</tbody></table>
+<h3 id="error-responses">Error Responses</h3>
+<table>
+<thead><tr>
+<th>Status</th>
+<th>When</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>404</td>
+<td>Command with given name/alias not found</td>
+</tr>
+</tbody></table>
+<h4 id="404-response-example">404 Response Example</h4>
+<pre><code class="language-json">{
+  "detail": "Command '/unknown' not found"
+}</code></pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Layer</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Route definition</td>
+<td><code>code_puppy/api/routers/commands.py</code></td>
+<td>Line 77-100</td>
+</tr>
+<tr>
+<td>Command lookup</td>
+<td><code>code_puppy/command_line/command_registry.py</code></td>
+<td><code>get_command()</code> function</td>
+</tr>
+<tr>
+<td>Response model</td>
+<td><code>code_puppy/api/routers/commands.py</code></td>
+<td><code>CommandInfo</code> Pydantic model</td>
+</tr>
+</tbody></table>
+<h2 id="flow">Flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant Client
+    participant Router
+    participant Registry
+    
+    Client-&gt;&gt;Router: GET /api/commands/{name}
+    Router-&gt;&gt;Registry: get_command(name)
+    Registry-&gt;&gt;Registry: Lookup by name or alias
+    alt Command found
+        Registry--&gt;&gt;Router: Command object
+        Router-&gt;&gt;Router: Build CommandInfo response
+        Router--&gt;&gt;Client: 200 OK + CommandInfo
+    else Command not found
+        Registry--&gt;&gt;Router: None
+        Router-&gt;&gt;Client: 404 Not Found
+    end
+</pre>
+<h2 id="command-lookup-logic">Command Lookup Logic</h2>
+<p>The endpoint performs a <strong>case-insensitive</strong> lookup that checks:</p>
+<ol>
+<li><strong>Exact command name match</strong> - e.g., <code>/set</code> matches <code>set</code></li>
+<li><strong>Alias match</strong> - e.g., <code>/ls</code> matches <code>list</code> command</li>
+<li><strong>Case normalization</strong> - e.g., <code>/SET</code> matches <code>set</code></li>
+</ol>
+<h3 id="lookup-priority">Lookup Priority</h3>
+<pre><code class="language-python"># Pseudocode for lookup logic
+def get_command(name):
+    name_lower = name.lower()
+    
+    # First, check direct command names
+    for cmd in all_commands:
+        if cmd.name.lower() == name_lower:
+            return cmd
+    
+    # Then, check aliases
+    for cmd in all_commands:
+        if name_lower in [a.lower() for a in cmd.aliases]:
+            return cmd
+    
+    return None</code></pre>
+<h2 id="examples">Examples</h2>
+<h3 id="example-1-get-core-command-info">Example 1: Get Core Command Info</h3>
+<pre><code class="language-bash">$ curl -s http://localhost:8000/api/commands/agent | jq .
+{
+  "name": "agent",
+  "description": "Switch to a different agent",
+  "usage": "/agent &lt;agent_name&gt;",
+  "aliases": ["switch", "use"],
+  "category": "core",
+  "detailed_help": "Switches to the specified agent. Use /list_agents to see available agents."
+}</code></pre>
+<h3 id="example-2-get-mcp-command-info">Example 2: Get MCP Command Info</h3>
+<pre><code class="language-bash">$ curl -s http://localhost:8000/api/commands/mcp | jq .
+{
+  "name": "mcp",
+  "description": "Manage MCP servers",
+  "usage": "/mcp &lt;command&gt; [args]",
+  "aliases": ["mcp-server"],
+  "category": "mcp",
+  "detailed_help": "Manages Model Context Protocol servers. Subcommands: start, stop, list, install, remove, status, test, logs."
+}</code></pre>
+<h3 id="example-3-command-not-found">Example 3: Command Not Found</h3>
+<pre><code class="language-bash">$ curl -s http://localhost:8000/api/commands/invalid | jq .
+{
+  "detail": "Command '/invalid' not found"
+}</code></pre>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Alias collisions</strong>: If two commands have the same alias, the first registered command wins. This is rare but possible with custom plugins.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>No leading slash</strong>: The <code>name</code> parameter should NOT include the leading <code>/</code>. The API automatically handles the distinction between command names and their display format.</p>
+</div>
+<div class="callout callout-tip">
+<div class="callout-title">TIP</div>
+<p><strong>Use for dynamic help</strong>: Frontend tools can use this endpoint to build dynamic help menus without hardcoding command descriptions.</p>
+</div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="ListCommands.html">Endpoint: GET /api/commands</a> - List all commands</li>
+<li><a href="ExecuteCommand.html">Endpoint: POST /api/commands/execute</a> - Execute a command</li>
+<li><a href="CommandAutocomplete.html">Endpoint: POST /api/commands/autocomplete</a> - Get autocomplete suggestions</li>
+<li><a href="../Concepts/Commands.html">Concept: Slash Commands</a> - How slash commands work</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

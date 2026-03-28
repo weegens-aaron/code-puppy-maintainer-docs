@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow: First-Time Setup — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="AddingAModel.html">Adding AModel</a>
+<a href="AgentExecution.html">Agent Execution</a>
+<a href="FirstTimeSetup.html" class="active">First Time Setup</a>
+<a href="InstallingASkill.html">Installing ASkill</a>
+<a href="MessageHistoryProcessing.html">Message History Processing</a>
+<a href="PluginLoading.html">Plugin Loading</a>
+<a href="RunningATask.html">Running ATask</a>
+<a href="StreamEventProcessing.html">Stream Event Processing</a>
+<a href="ToolCallExecution.html">Tool Call Execution</a>
+<a href="index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="flow-first-time-setup">Flow: First-Time Setup</h1>
+<h2 id="what-happens">What Happens?</h2>
+<p>When a user runs Code Puppy for the first time, the system guides them through a 5-slide interactive tutorial, optionally sets up OAuth authentication, and creates their initial configuration files.</p>
+<h2 id="trigger">Trigger</h2>
+<ul>
+<li><strong>User action</strong>: Running <code>code-puppy</code> or <code>code-puppy -i</code> for the first time</li>
+<li><strong>Condition</strong>: No onboarding complete marker file exists at <code>~/.code_puppy/onboarding_complete</code></li>
+<li><strong>Override</strong>: Set <code>CODE_PUPPY_SKIP_TUTORIAL=1</code> to skip automatically</li>
+</ul>
+<h2 id="outcome">Outcome</h2>
+<ul>
+<li>Configuration directory created at <code>~/.code_puppy/</code> (or XDG paths if env vars set)</li>
+<li><code>puppy.cfg</code> created with user's name and puppy name</li>
+<li>Onboarding marker file created</li>
+<li>Optional OAuth authentication completed if user selected a model provider</li>
+<li>User enters interactive mode ready to code</li>
+</ul>
+<h2 id="step-by-step">Step-by-Step</h2>
+<pre class="mermaid">
+flowchart TD
+    A[Start: code-puppy] --&gt; B{Config Exists?}
+    B --&gt;|No| C[Create XDG Directories]
+    B --&gt;|Yes| D{Onboarding Complete?}
+    C --&gt; D
+    D --&gt;|No| E[Show Onboarding Wizard]
+    D --&gt;|Yes| J[Skip Tutorial]
+    E --&gt; F{User Selected Model?}
+    F --&gt;|ChatGPT| G[Run ChatGPT OAuth]
+    F --&gt;|Claude| H[Run Claude OAuth]
+    F --&gt;|API Keys| I[Skip OAuth]
+    F --&gt;|Skip| I
+    G --&gt; K[Mark Onboarding Complete]
+    H --&gt; K
+    I --&gt; K
+    J --&gt; L[Enter Interactive Mode]
+    K --&gt; L
+</pre>
+<h3 id="1-directory-config-initialization">1. Directory &amp; Config Initialization</h3>
+<ul>
+<li><strong>What</strong>: Create XDG directories and ensure <code>puppy.cfg</code> exists</li>
+<li><strong>Where</strong>: <code>code_puppy/config.py</code> → <code>ensure_config_exists()</code></li>
+<li><strong>Failure mode</strong>: If directory creation fails, app exits with error</li>
+</ul>
+<p>Creates these directories (0700 permissions):</p>
+<ul>
+<li><code>~/.code_puppy/</code> (config)</li>
+<li><code>~/.code_puppy/data/</code> (models, agents, skills)</li>
+<li><code>~/.code_puppy/cache/</code> (autosaves)</li>
+<li><code>~/.code_puppy/state/</code> (command history, DBOS)</li>
+</ul>
+<p>Prompts for required config values:</p>
+<ul>
+<li><code>puppy_name</code>: What to call the puppy</li>
+<li><code>owner_name</code>: Owner's name</li>
+</ul>
+<h3 id="2-onboarding-check">2. Onboarding Check</h3>
+<ul>
+<li><strong>What</strong>: Determine if tutorial should be shown</li>
+<li><strong>Where</strong>: <code>code_puppy/command_line/onboarding_wizard.py</code> → <code>should_show_onboarding()</code></li>
+<li><strong>Failure mode</strong>: None - defaults to showing if marker doesn't exist</li>
+</ul>
+<p>Checks:</p>
+<ol>
+<li><code>CODE_PUPPY_SKIP_TUTORIAL</code> env var (skip if "1", "true", "yes")</li>
+<li><code>~/.code_puppy/onboarding_complete</code> marker file (skip if exists)</li>
+</ol>
+<h3 id="3-interactive-tutorial-5-slides">3. Interactive Tutorial (5 Slides)</h3>
+<ul>
+<li><strong>What</strong>: Show 5-slide TUI tutorial</li>
+<li><strong>Where</strong>: <code>code_puppy/command_line/onboarding_wizard.py</code> → <code>run_onboarding_wizard()</code></li>
+<li><strong>Failure mode</strong>: Caught and logged as warning, app continues</li>
+</ul>
+<p><strong>Slide 1: Welcome</strong></p>
+<ul>
+<li>Quick intro to setup steps</li>
+<li>Progress indicator: ● ○ ○ ○ ○</li>
+</ul>
+<p><strong>Slide 2: Model Selection</strong></p>
+<ul>
+<li>User picks model provider:</li>
+<li>ChatGPT Plus/Pro/Max (OAuth)</li>
+<li>Claude Code Pro/Max (OAuth)</li>
+<li>API Keys (manual config)</li>
+<li>OpenRouter (single key)</li>
+<li>Skip for now</li>
+<li>Selection triggers OAuth flow or skips</li>
+</ul>
+<p><strong>Slide 3: MCP Servers (Optional)</strong></p>
+<ul>
+<li>Explains MCP server integration</li>
+<li>Shows <code>/mcp install</code> and <code>/mcp list</code> commands</li>
+<li>User can skip</li>
+</ul>
+<p><strong>Slide 4: Agent Usage Guide</strong></p>
+<ul>
+<li>When to use Code Puppy (default) vs Planning Agent</li>
+<li>Examples of appropriate tasks for each</li>
+</ul>
+<p><strong>Slide 5: Ready to Roll</strong></p>
+<ul>
+<li>Essential commands reminder</li>
+<li>Shows which OAuth flow will run (if any)</li>
+<li>Press Enter to start</li>
+</ul>
+<p><strong>Navigation</strong>:</p>
+<ul>
+<li><code>→/l</code>: Next slide</li>
+<li><code>←/h</code>: Previous slide</li>
+<li><code>↑↓/jk</code>: Navigate options</li>
+<li><code>Enter</code>: Select/confirm</li>
+<li><code>ESC</code>: Skip tutorial</li>
+</ul>
+<h3 id="4-oauth-authentication-conditional">4. OAuth Authentication (Conditional)</h3>
+<ul>
+<li><strong>What</strong>: Complete OAuth flow for selected provider</li>
+<li><strong>Where</strong>:</li>
+<li>ChatGPT: <code>code_puppy/plugins/chatgpt_oauth/oauth_flow.py</code> → <code>run_oauth_flow()</code></li>
+<li>Claude: <code>code_puppy/plugins/claude_code_oauth/register_callbacks.py</code> → <code>_perform_authentication()</code></li>
+<li><strong>Failure mode</strong>: OAuth errors logged, app continues without model configured</li>
+</ul>
+<p><strong>ChatGPT OAuth</strong>:</p>
+<ol>
+<li>Opens browser for authentication</li>
+<li>Exchanges token for model access</li>
+<li>Sets model to <code>chatgpt-gpt-5.3-codex</code></li>
+</ol>
+<p><strong>Claude OAuth</strong>:</p>
+<ol>
+<li>Opens browser for authentication</li>
+<li>Exchanges token for model access</li>
+<li>Sets model to <code>claude-code-claude-opus-4-6</code></li>
+</ol>
+<h3 id="5-mark-onboarding-complete">5. Mark Onboarding Complete</h3>
+<ul>
+<li><strong>What</strong>: Create marker file to prevent re-showing tutorial</li>
+<li><strong>Where</strong>: <code>code_puppy/command_line/onboarding_wizard.py</code> → <code>mark_onboarding_complete()</code></li>
+<li><strong>Failure mode</strong>: None - warning logged if fails</li>
+</ul>
+<p>Creates <code>~/.code_puppy/onboarding_complete</code> with content "completed"</p>
+<h3 id="6-enter-interactive-mode">6. Enter Interactive Mode</h3>
+<ul>
+<li><strong>What</strong>: Start the main interactive CLI loop</li>
+<li><strong>Where</strong>: <code>code_puppy/cli_runner.py</code> → <code>interactive_mode()</code></li>
+<li><strong>Failure mode</strong>: None - this is the main app loop</li>
+</ul>
+<p>Shows:</p>
+<ul>
+<li>Exit instructions</li>
+<li>Command hints</li>
+<li>MOTD (Message of the Day)</li>
+<li>Truecolor warning (if applicable)</li>
+<li>Ready prompt</li>
+</ul>
+<h2 id="data-transformations">Data Transformations</h2>
+<table>
+<thead><tr>
+<th>Stage</th>
+<th>Input</th>
+<th>Output</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Config init</td>
+<td>None</td>
+<td><code>puppy.cfg</code> with user/puppy names</td>
+<td><code>config.py:ensure_config_exists()</code></td>
+</tr>
+<tr>
+<td>Tutorial result</td>
+<td>User selections</td>
+<td><code>result</code> string (chatgpt/claude/completed/skipped)</td>
+<td><code>onboarding_wizard.py:run_onboarding_wizard()</code></td>
+</tr>
+<tr>
+<td>OAuth</td>
+<td>OAuth result</td>
+<td>Model name set in config</td>
+<td><code>cli_runner.py</code> (after wizard)</td>
+</tr>
+<tr>
+<td>Marker</td>
+<td>None</td>
+<td><code>onboarding_complete</code> file</td>
+<td><code>onboarding_wizard.py:mark_onboarding_complete()</code></td>
+</tr>
+</tbody></table>
+<h2 id="failure-handling">Failure Handling</h2>
+<table>
+<thead><tr>
+<th>Failure Point</th>
+<th>Detection</th>
+<th>Recovery</th>
+<th>Alert?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Directory creation</td>
+<td>OSError</td>
+<td>Exit with error message</td>
+<td>Yes (error)</td>
+</tr>
+<tr>
+<td>Tutorial crash</td>
+<td>Exception caught</td>
+<td>Log warning, skip tutorial</td>
+<td>Yes (warning)</td>
+</tr>
+<tr>
+<td>OAuth failure</td>
+<td>Exception in OAuth flow</td>
+<td>Log error, continue without model</td>
+<td>Yes (error)</td>
+</tr>
+<tr>
+<td>Marker file write</td>
+<td>OSError</td>
+<td>Log warning, may show tutorial again</td>
+<td>Yes (warning)</td>
+</tr>
+</tbody></table>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Typical duration</strong>: 1-2 minutes (including tutorial reading time)</li>
+<li><strong>OAuth duration</strong>: 30-60 seconds (browser auth + token exchange)</li>
+<li><strong>Bottlenecks</strong>: None - all synchronous, no network calls except OAuth</li>
+<li><strong>Scaling considerations</strong>: N/A - single user setup</li>
+</ul>
+<h2 id="debugging-this-flow">Debugging This Flow</h2>
+<h3 id="key-log-messages">Key Log Messages</h3>
+<table>
+<thead><tr>
+<th>Message</th>
+<th>Meaning</th>
+<th>Action</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>🐾 Let's get your Puppy ready!</code></td>
+<td>Config file being created</td>
+<td>Normal - user input expected</td>
+</tr>
+<tr>
+<td><code>✓ Tutorial completed!</code></td>
+<td>Onboarding finished successfully</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td><code>✓ Tutorial skipped</code></td>
+<td>User pressed ESC</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td><code>Tutorial auto-start failed: {error}</code></td>
+<td>Wizard crashed</td>
+<td>Check error, run <code>/tutorial</code> manually</td>
+</tr>
+<tr>
+<td><code>🔐 Starting ChatGPT OAuth flow...</code></td>
+<td>OAuth initiated</td>
+<td>Wait for browser auth</td>
+</tr>
+</tbody></table>
+<h3 id="common-issues">Common Issues</h3>
+<h4 id="symptom-tutorial-doesn-t-show-on-first-run">Symptom: Tutorial doesn't show on first run</h4>
+<p><strong>Likely Causes:</strong></p>
+<ol>
+<li><code>CODE_PUPPY_SKIP_TUTORIAL=1</code> env var is set</li>
+<li>Marker file already exists from previous run</li>
+</ol>
+<p><strong>Diagnosis:</strong></p>
+<pre><code class="language-bash"># Check env var
+echo $CODE_PUPPY_SKIP_TUTORIAL
+
+# Check marker file
+ls -la ~/.code_puppy/onboarding_complete</code></pre>
+<p><strong>Resolution:</strong></p>
+<pre><code class="language-bash"># Remove marker to re-show tutorial
+rm ~/.code_puppy/onboarding_complete
+
+# Or run tutorial manually
+code-puppy -i
+# Then type /tutorial</code></pre>
+<h4 id="symptom-oauth-flow-hangs">Symptom: OAuth flow hangs</h4>
+<p><strong>Likely Causes:</strong></p>
+<ol>
+<li>Browser didn't open</li>
+<li>Callback server port blocked</li>
+<li>Network issues</li>
+</ol>
+<p><strong>Diagnosis:</strong></p>
+<ul>
+<li>Check if browser opened</li>
+<li>Check terminal for error messages</li>
+<li>Verify network connectivity</li>
+</ul>
+<p><strong>Resolution:</strong></p>
+<ol>
+<li>Cancel with Ctrl+C</li>
+<li>Manually set API key: <code>/set OPENAI_API_KEY=sk-...</code></li>
+<li>Or use <code>/add_model</code> to configure manually</li>
+</ol>
+<h4 id="symptom-config-prompts-don-t-appear">Symptom: Config prompts don't appear</h4>
+<p><strong>Likely Causes:</strong></p>
+<ol>
+<li>Config file already exists</li>
+<li>stdin not available (non-interactive run)</li>
+</ol>
+<p><strong>Diagnosis:</strong></p>
+<pre><code class="language-bash">cat ~/.code_puppy/puppy.cfg</code></pre>
+<p><strong>Resolution:</strong></p>
+<ul>
+<li>If file exists, config is already set</li>
+<li>If file missing, run interactively: <code>code-puppy -i</code></li>
+</ul>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/PluginDevelopment.html">Feature: Plugin Development</a> - How to extend setup with plugins</li>
+<li><a href="../Concepts/Configuration.html">Concept: Configuration Management</a> - Config file structure and keys</li>
+<li><a href="../Views/OnboardingWizard.html">View: Onboarding Wizard</a> - TUI implementation details</li>
+<li><a href="../Guides/AddModels.html">Guide: AddModels</a> - Manual model configuration after setup</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

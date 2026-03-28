@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow: Stream Event Processing — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="AddingAModel.html">Adding AModel</a>
+<a href="AgentExecution.html">Agent Execution</a>
+<a href="FirstTimeSetup.html">First Time Setup</a>
+<a href="InstallingASkill.html">Installing ASkill</a>
+<a href="MessageHistoryProcessing.html">Message History Processing</a>
+<a href="PluginLoading.html">Plugin Loading</a>
+<a href="RunningATask.html">Running ATask</a>
+<a href="StreamEventProcessing.html" class="active">Stream Event Processing</a>
+<a href="ToolCallExecution.html">Tool Call Execution</a>
+<a href="index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="flow-stream-event-processing">Flow: Stream Event Processing</h1>
+<h2 id="what-happens">What Happens?</h2>
+<p>Stream event processing is the real-time event pipeline that captures and broadcasts streaming events from agent runs to registered plugins. As an agent generates tokens, thinks, or calls tools, each streaming event is captured, enriched with metadata, and dispatched to any plugins that have registered <code>stream_event</code> callbacks. This enables features like frontend WebSocket updates, real-time metrics tracking, and external monitoring.</p>
+<h2 id="trigger">Trigger</h2>
+<p><strong>What initiates this flow?</strong></p>
+<ul>
+<li>Agent run starts (main agent or sub-agent)</li>
+<li>Agent begins generating streaming responses via <code>pydantic-ai</code> event stream</li>
+<li>Events are emitted for each part (text, thinking, tool calls) and delta</li>
+</ul>
+<p><strong>Event Types:</strong></p>
+<ul>
+<li><code>part_start</code> - A new part begins (text, thinking, or tool call)</li>
+<li><code>part_delta</code> - Content is being streamed (token by token)</li>
+<li><code>part_end</code> - A part completes</li>
+</ul>
+<h2 id="outcome">Outcome</h2>
+<p>When this flow completes successfully:</p>
+<ul>
+<li>All streaming events are captured and broadcast to registered callbacks</li>
+<li>Plugins can react in real-time (e.g., frontend updates, logging, metrics)</li>
+<li>Event data is sanitized to prevent exposure of sensitive information</li>
+<li>Errors in callbacks don't break the streaming pipeline</li>
+</ul>
+<h2 id="step-by-step">Step-by-Step</h2>
+<pre class="mermaid">
+flowchart TD
+    A[Agent Run Starts] --&gt; B[Event Stream Begins]
+    B --&gt; C{Event Type?}
+    C --&gt;|part_start| D[Capture Part Info]
+    C --&gt;|part_delta| E[Capture Delta Content]
+    C --&gt;|part_end| F[Capture Completion]
+    D --&gt; G[Fire stream_event Callback]
+    E --&gt; G
+    F --&gt; G
+    G --&gt; H{Callbacks Available?}
+    H --&gt;|Yes| I[Execute Callbacks Async]
+    H --&gt;|No| J[Skip Callbacks]
+    I --&gt; K{Callback Errors?}
+    K --&gt;|Yes| L[Log Error, Continue]
+    K --&gt;|No| M[Callback Succeeds]
+    L --&gt; N[Continue Streaming]
+    M --&gt; N
+    J --&gt; N
+    N --&gt; O{More Events?}
+    O --&gt;|Yes| B
+    O --&gt;|No| P[Stream Complete]
+</pre>
+<h3 id="1-event-stream-initialization">1. Event Stream Initialization</h3>
+<ul>
+<li><strong>What</strong>: Agent run begins, event stream is created by <code>pydantic-ai</code></li>
+<li><strong>Where</strong>: <code>code_puppy/agents/event_stream_handler.py</code> (main) or <code>subagent_stream_handler.py</code> (sub-agent)</li>
+<li><strong>Failure mode</strong>: If stream handler fails, agent run may fail or produce no output</li>
+</ul>
+<h3 id="2-event-capture-part-start">2. Event Capture (part_start)</h3>
+<ul>
+<li><strong>What</strong>: When a new part begins (text, thinking, or tool call), capture metadata</li>
+<li><strong>Where</strong>: <code>event_stream_handler.py</code> line ~140-170</li>
+<li><strong>Data captured</strong>:</li>
+<li><code>index</code>: Part index in the stream</li>
+<li><code>part_type</code>: Type of part (e.g., "TextPart", "ToolCallPart")</li>
+<li><code>part</code>: The full part object</li>
+<li><strong>Failure mode</strong>: Missing metadata may cause plugins to misidentify event type</li>
+</ul>
+<h3 id="3-event-capture-part-delta">3. Event Capture (part_delta)</h3>
+<ul>
+<li><strong>What</strong>: As content streams in, capture incremental updates</li>
+<li><strong>Where</strong>: <code>event_stream_handler.py</code> line ~175-240</li>
+<li><strong>Data captured</strong>:</li>
+<li><code>index</code>: Part index</li>
+<li><code>delta_type</code>: Type of delta (e.g., "TextPartDelta", "ToolCallPartDelta")</li>
+<li><code>delta</code>: The delta object with content changes</li>
+<li><strong>Token tracking</strong>: For text/tool parts, estimate tokens from content length</li>
+<li><strong>Failure mode</strong>: Token estimates may be inaccurate (4 chars ≈ 1 token heuristic)</li>
+</ul>
+<h3 id="4-event-capture-part-end">4. Event Capture (part_end)</h3>
+<ul>
+<li><strong>What</strong>: When a part completes, capture final state</li>
+<li><strong>Where</strong>: <code>event_stream_handler.py</code> line ~245-280</li>
+<li><strong>Data captured</strong>:</li>
+<li><code>index</code>: Part index</li>
+<li><code>next_part_kind</code>: Kind of next part (if available)</li>
+<li><strong>Cleanup</strong>: Reset tracking state (token counts, tool names, etc.)</li>
+<li><strong>Failure mode</strong>: State leaks if cleanup fails (rare)</li>
+</ul>
+<h3 id="5-callback-dispatch">5. Callback Dispatch</h3>
+<ul>
+<li><strong>What</strong>: Fire <code>stream_event</code> callback for each event</li>
+<li><strong>Where</strong>: <code>code_puppy/callbacks.py</code> <code>on_stream_event()</code> function</li>
+<li><strong>How</strong>: Uses <code>asyncio.create_task()</code> to run callbacks non-blocking</li>
+<li><strong>Session context</strong>: Includes optional <code>agent_session_id</code> for tracking</li>
+<li><strong>Failure mode</strong>: Callback errors are logged but don't break streaming</li>
+</ul>
+<h3 id="6-plugin-processing">6. Plugin Processing</h3>
+<ul>
+<li><strong>What</strong>: Registered plugins receive and process events</li>
+<li><strong>Where</strong>: Plugin-specific handlers (e.g., <code>frontend_emitter/register_callbacks.py</code>)</li>
+<li><strong>Common actions</strong>:</li>
+<li>Sanitize event data (truncate strings, limit dict sizes)</li>
+<li>Emit to WebSocket/frontend</li>
+<li>Log metrics or track tool calls</li>
+<li><strong>Failure mode</strong>: Plugin errors are caught and logged</li>
+</ul>
+<h2 id="data-transformations">Data Transformations</h2>
+<table>
+<thead><tr>
+<th>Stage</th>
+<th>Input</th>
+<th>Output</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Event Capture</td>
+<td><code>PartStartEvent</code>, <code>PartDeltaEvent</code>, <code>PartEndEvent</code></td>
+<td>Dict with <code>event_type</code>, <code>event_data</code></td>
+<td><code>event_stream_handler.py</code></td>
+</tr>
+<tr>
+<td>Callback Dispatch</td>
+<td><code>event_type</code>, <code>event_data</code>, <code>agent_session_id</code></td>
+<td>List of callback results</td>
+<td><code>callbacks.py</code></td>
+</tr>
+<tr>
+<td>Plugin Sanitization</td>
+<td>Raw event data</td>
+<td>Sanitized dict (truncated strings, limited size)</td>
+<td><code>frontend_emitter/register_callbacks.py</code></td>
+</tr>
+<tr>
+<td>Frontend Emission</td>
+<td>Sanitized event</td>
+<td>WebSocket message</td>
+<td><code>frontend_emitter/emitter.py</code></td>
+</tr>
+</tbody></table>
+<h2 id="failure-handling">Failure Handling</h2>
+<table>
+<thead><tr>
+<th>Failure Point</th>
+<th>Detection</th>
+<th>Recovery</th>
+<th>Alert?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Callback dispatch</td>
+<td>Exception in <code>on_stream_event()</code></td>
+<td>Log error, continue streaming</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Plugin processing</td>
+<td>Exception in plugin callback</td>
+<td>Log error, continue</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Event loop unavailable</td>
+<td><code>RuntimeError</code> (no running loop)</td>
+<td>Skip callback, log debug</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Sanitization error</td>
+<td>Exception in <code>_sanitize_event_data()</code></td>
+<td>Log error, use fallback</td>
+<td>No</td>
+</tr>
+</tbody></table>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p>Stream event callbacks run <strong>asynchronously</strong> and non-blocking. If a callback takes too long, it won't block the agent stream, but it may cause memory buildup if many events pile up.</p>
+</div>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Typical duration</strong>: Callbacks execute in &lt;10ms each</li>
+<li><strong>Throughput</strong>: Can handle 100s of events per second</li>
+<li><strong>Bottlenecks</strong>:</li>
+<li>Slow plugin callbacks (should be async and non-blocking)</li>
+<li>Large event data (sanitization helps)</li>
+<li><strong>Scaling considerations</strong>:</li>
+<li>Callbacks run in <code>asyncio.create_task()</code> - don't block</li>
+<li>Use <code>asyncio.gather()</code> patterns in plugins for parallelism</li>
+</ul>
+<h2 id="debugging-this-flow">Debugging This Flow</h2>
+<h3 id="key-log-messages">Key Log Messages</h3>
+<table>
+<thead><tr>
+<th>Message</th>
+<th>Meaning</th>
+<th>Action</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>Emitted stream_event: {event_type}</code></td>
+<td>Event successfully emitted by frontend_emitter</td>
+<td>Normal operation</td>
+</tr>
+<tr>
+<td><code>Failed to emit stream_event: {error}</code></td>
+<td>Plugin failed to emit event</td>
+<td>Check plugin code</td>
+</tr>
+<tr>
+<td><code>Error firing stream event callback: {error}</code></td>
+<td>Callback dispatch failed</td>
+<td>Check callbacks module</td>
+</tr>
+<tr>
+<td><code>No event loop available for stream event callback</code></td>
+<td>Callback skipped (shutdown context)</td>
+<td>Normal during shutdown</td>
+</tr>
+</tbody></table>
+<h3 id="common-issues">Common Issues</h3>
+<table>
+<thead><tr>
+<th>Symptom</th>
+<th>Likely Cause</th>
+<th>Fix</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Events not reaching frontend</td>
+<td>Frontend emitter plugin not loaded</td>
+<td>Check plugin registration</td>
+</tr>
+<tr>
+<td>Large payloads in frontend</td>
+<td>Sanitization not working</td>
+<td>Check <code>_sanitize_event_data()</code></td>
+</tr>
+<tr>
+<td>Callbacks not firing</td>
+<td>No <code>stream_event</code> callbacks registered</td>
+<td>Use <code>register_callback("stream_event", func)</code></td>
+</tr>
+<tr>
+<td>Memory buildup</td>
+<td>Slow callbacks blocking</td>
+<td>Ensure callbacks are async and non-blocking</td>
+</tr>
+</tbody></table>
+<h3 id="trace-a-stream-event">Trace a Stream Event</h3>
+<ol>
+<li><strong>Enable debug logging</strong>: ```bash export LOG_LEVEL=DEBUG code_puppy ```</li>
+</ol>
+<ol>
+<li><strong>Watch for event logs</strong>: ``` DEBUG: code_puppy.callbacks: Triggering 1 async callbacks for phase 'stream_event' DEBUG: code_puppy.plugins.frontend_emitter.register_callbacks: Emitted stream_event: part_start ```</li>
+</ol>
+<ol>
+<li><strong>Check callback registration</strong>: ```python from code_puppy.callbacks import count_callbacks print(count_callbacks("stream_event"))  # Should be &gt; 0 if plugins loaded ```</li>
+</ol>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/HookSystem.html">Feature: Hook System</a> - How callbacks are registered</li>
+<li><a href="../Features/PluginDevelopment.html">Feature: Plugin Development</a> - How to write plugins</li>
+<li><a href="../Concepts/CallbackSystem.html">Concept: Callback System</a> - Callback architecture</li>
+<li><a href="../Views/TerminalWeb.html">View: Terminal Web Interface</a> - Frontend that consumes events</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

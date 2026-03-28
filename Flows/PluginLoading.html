@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow: Plugin Loading — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="AddingAModel.html">Adding AModel</a>
+<a href="AgentExecution.html">Agent Execution</a>
+<a href="FirstTimeSetup.html">First Time Setup</a>
+<a href="InstallingASkill.html">Installing ASkill</a>
+<a href="MessageHistoryProcessing.html">Message History Processing</a>
+<a href="PluginLoading.html" class="active">Plugin Loading</a>
+<a href="RunningATask.html">Running ATask</a>
+<a href="StreamEventProcessing.html">Stream Event Processing</a>
+<a href="ToolCallExecution.html">Tool Call Execution</a>
+<a href="index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="flow-plugin-loading">Flow: Plugin Loading</h1>
+<h2 id="what-happens">What Happens?</h2>
+<p>When Code Puppy starts up, it automatically discovers and loads all available plugins from both built-in and user-provided locations. Each plugin registers callbacks that hook into various phases of the application lifecycle, enabling extensibility without modifying core code.</p>
+<h2 id="trigger">Trigger</h2>
+<ul>
+<li><strong>Application startup</strong>: Plugins are loaded once during CLI initialization in <code>cli_runner.py</code></li>
+<li><strong>Idempotent</strong>: Subsequent calls to load plugins are ignored to prevent duplicate registrations</li>
+</ul>
+<h2 id="outcome">Outcome</h2>
+<ul>
+<li>All plugin callbacks are registered in the global callback registry</li>
+<li>Plugins can intercept and modify application behavior at defined hook points</li>
+<li>Built-in and user plugins are tracked separately for debugging</li>
+</ul>
+<h2 id="step-by-step">Step-by-Step</h2>
+<pre class="mermaid">
+flowchart TD
+    A[Application Start] --&gt; B[Import plugins module]
+    B --&gt; C{Plugins already loaded?}
+    C --&gt;|Yes| D[Skip - return empty lists]
+    C --&gt;|No| E[Load built-in plugins]
+    E --&gt; F[Iterate code_puppy/plugins/]
+    F --&gt; G{Has register_callbacks.py?}
+    G --&gt;|No| H[Skip directory]
+    G --&gt;|Yes| I{Special case: shell_safety?}
+    I --&gt;|Yes| J{Safety level low/none?}
+    J --&gt;|No| K[Skip - safety restriction]
+    J --&gt;|Yes| L[Import module]
+    I --&gt;|No| L
+    L --&gt; M{Import successful?}
+    M --&gt;|No| N[Log error, continue]
+    M --&gt;|Yes| O[Add to built-in list]
+    O --&gt; P[Load user plugins]
+    P --&gt; Q[Check ~/.code_puppy/plugins/]
+    Q --&gt; R{Directory exists?}
+    R --&gt;|No| S[Return empty user list]
+    R --&gt;|Yes| T[Add to sys.path]
+    T --&gt; U[Iterate user plugin dirs]
+    U --&gt; V{Has register_callbacks.py?}
+    V --&gt;|Yes| W[Load from file location]
+    V --&gt;|No| X{Has __init__.py?}
+    X --&gt;|Yes| Y[Load __init__.py]
+    X --&gt;|No| Z[Skip - no entry point]
+    W --&gt; AA{Load successful?}
+    Y --&gt; AA
+    AA --&gt;|No| AB[Log error, continue]
+    AA --&gt;|Yes| AC[Add to user list]
+    AC --&gt; AD[Mark _PLUGINS_LOADED = True]
+    AD --&gt; AE[Return {builtin: [...], user: [...]}]
+    H --&gt; F
+    N --&gt; F
+    K --&gt; F
+    AB --&gt; U
+    AC --&gt; U
+    Z --&gt; U
+</pre>
+<h3 id="1-guard-check">1. Guard Check</h3>
+<ul>
+<li><strong>What</strong>: Check if <code>_PLUGINS_LOADED</code> flag is already <code>True</code></li>
+<li><strong>Where</strong>: <code>code_puppy/plugins/__init__.py:load_plugin_callbacks()</code></li>
+<li><strong>Failure mode</strong>: If skipped, plugins would be reloaded causing duplicate callback registrations</li>
+</ul>
+<h3 id="2-load-built-in-plugins">2. Load Built-in Plugins</h3>
+<ul>
+<li><strong>What</strong>: Iterate through <code>code_puppy/plugins/</code> subdirectories</li>
+<li><strong>Where</strong>: <code>code_puppy/plugins/__init__.py:_load_builtin_plugins()</code></li>
+<li><strong>Failure mode</strong>: Import errors are caught and logged; other plugins continue loading</li>
+</ul>
+<h3 id="3-special-case-handling">3. Special Case Handling</h3>
+<ul>
+<li><strong>What</strong>: <code>shell_safety</code> plugin is conditionally loaded based on <code>safety_permission_level</code> config</li>
+<li><strong>Where</strong>: <code>code_puppy/plugins/__init__.py:_load_builtin_plugins()</code> lines 30-37</li>
+<li><strong>Failure mode</strong>: If safety level is "high" or "medium", shell_safety is skipped silently</li>
+</ul>
+<h3 id="4-load-user-plugins">4. Load User Plugins</h3>
+<ul>
+<li><strong>What</strong>: Iterate through <code>~/.code_puppy/plugins/</code> subdirectories</li>
+<li><strong>Where</strong>: <code>code_puppy/plugins/__init__.py:_load_user_plugins()</code></li>
+<li><strong>Failure mode</strong>: User plugin errors are logged but don't crash the application</li>
+</ul>
+<h3 id="5-register-callbacks">5. Register Callbacks</h3>
+<ul>
+<li><strong>What</strong>: Plugin's <code>register_callbacks.py</code> executes at import time, calling <code>register_callback()</code> for each hook</li>
+<li><strong>Where</strong>: Module scope of each plugin's <code>register_callbacks.py</code></li>
+<li><strong>Failure mode</strong>: Callback registration errors are caught by the callback engine's error handling</li>
+</ul>
+<h3 id="6-mark-as-loaded">6. Mark as Loaded</h3>
+<ul>
+<li><strong>What</strong>: Set <code>_PLUGINS_LOADED = True</code> to prevent future reloads</li>
+<li><strong>Where</strong>: <code>code_puppy/plugins/__init__.py:load_plugin_callbacks()</code> line 167</li>
+<li><strong>Failure mode</strong>: If not set, subsequent imports would cause duplicate registrations</li>
+</ul>
+<h2 id="data-transformations">Data Transformations</h2>
+<table>
+<thead><tr>
+<th>Stage</th>
+<th>Input</th>
+<th>Output</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Built-in scan</td>
+<td><code>plugins_dir: Path</code></td>
+<td>List of plugin names</td>
+<td><code>_load_builtin_plugins()</code></td>
+</tr>
+<tr>
+<td>User scan</td>
+<td><code>user_plugins_dir: Path</code></td>
+<td>List of plugin names</td>
+<td><code>_load_user_plugins()</code></td>
+</tr>
+<tr>
+<td>Final result</td>
+<td>builtin list, user list</td>
+<td><code>{"builtin": [...], "user": [...]}</code></td>
+<td><code>load_plugin_callbacks()</code></td>
+</tr>
+</tbody></table>
+<h2 id="failure-handling">Failure Handling</h2>
+<table>
+<thead><tr>
+<th>Failure Point</th>
+<th>Detection</th>
+<th>Recovery</th>
+<th>Alert?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Plugin import error</td>
+<td><code>ImportError</code> exception</td>
+<td>Log warning, continue to next plugin</td>
+<td>Yes (warning)</td>
+</tr>
+<tr>
+<td>Plugin runtime error</td>
+<td>General <code>Exception</code></td>
+<td>Log error with traceback, continue</td>
+<td>Yes (error)</td>
+</tr>
+<tr>
+<td>Callback registration error</td>
+<td><code>ValueError</code>/<code>TypeError</code> in <code>register_callback()</code></td>
+<td>Propagates to plugin loader, logged</td>
+<td>Yes (error)</td>
+</tr>
+<tr>
+<td>User plugins dir missing</td>
+<td><code>Path.exists()</code> returns False</td>
+<td>Return empty list, no error</td>
+<td>No</td>
+</tr>
+<tr>
+<td>shell_safety blocked</td>
+<td>Config check fails</td>
+<td>Skip plugin silently</td>
+<td>Debug log only</td>
+</tr>
+</tbody></table>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Typical duration</strong>: 50-200ms depending on plugin count</li>
+<li><strong>Bottlenecks</strong>: Python module import overhead for each plugin</li>
+<li><strong>Scaling considerations</strong>: Plugin count should remain under ~50 for acceptable startup time</li>
+</ul>
+<h2 id="debugging-this-flow">Debugging This Flow</h2>
+<h3 id="key-log-messages">Key Log Messages</h3>
+<table>
+<thead><tr>
+<th>Message</th>
+<th>Meaning</th>
+<th>Action</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>Loaded plugins: builtin=[...], user=[...]</code></td>
+<td>Successful load summary</td>
+<td>Check if expected plugins are listed</td>
+</tr>
+<tr>
+<td><code>Skipping shell_safety plugin - safety_permission_level is 'X'</code></td>
+<td>Plugin blocked by config</td>
+<td>Set <code>safety_permission_level=low</code> or <code>none</code> if needed</td>
+</tr>
+<tr>
+<td><code>Failed to import callbacks from plugin X: ...</code></td>
+<td>Import error</td>
+<td>Check plugin's <code>register_callbacks.py</code> for syntax errors</td>
+</tr>
+<tr>
+<td><code>Unexpected error loading plugin X: ...</code></td>
+<td>Runtime error</td>
+<td>Check plugin code for exceptions at import time</td>
+</tr>
+<tr>
+<td><code>Plugins already loaded, skipping duplicate load</code></td>
+<td>Idempotency guard fired</td>
+<td>Normal - indicates multiple load attempts</td>
+</tr>
+</tbody></table>
+<h3 id="common-issues">Common Issues</h3>
+<h4 id="plugin-not-loading">Plugin not loading</h4>
+<p><strong>Symptom</strong>: Expected plugin missing from loaded list</p>
+<p><strong>Likely Causes:</strong></p>
+<ol>
+<li>Missing <code>register_callbacks.py</code> file</li>
+<li>Import error in the plugin code</li>
+<li>For <code>shell_safety</code>: safety level too high</li>
+</ol>
+<p><strong>Diagnosis:</strong></p>
+<pre><code class="language-bash"># Check plugin structure
+ls -la code_puppy/plugins/my_plugin/
+
+# Run with debug logging
+python -m code_puppy --log-level DEBUG</code></pre>
+<p><strong>Resolution:</strong></p>
+<ol>
+<li>Ensure <code>register_callbacks.py</code> exists in plugin directory</li>
+<li>Check for syntax errors: <code>python -c "from code_puppy.plugins.my_plugin import register_callbacks"</code></li>
+<li>For shell_safety: set <code>safety_permission_level=low</code> in config</li>
+</ol>
+<h4 id="duplicate-callback-registrations">Duplicate callback registrations</h4>
+<p><strong>Symptom</strong>: Callbacks firing multiple times</p>
+<p><strong>Likely Cause:</strong></p>
+<ul>
+<li><code>_PLUGINS_LOADED</code> flag not working (shouldn't happen in normal operation)</li>
+</ul>
+<p><strong>Resolution:</strong></p>
+<ul>
+<li>Restart the application - the flag is module-level and resets on restart</li>
+</ul>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/PluginDevelopment.html">Feature: Plugin Development</a></li>
+<li><a href="../Concepts/CallbackSystem.html">Concept: Callback System</a></li>
+<li><a href="../Concepts/ToolRegistration.html">Concept: Tool Registration</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

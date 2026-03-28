@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>View: Terminal Web Interface — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="AgentPicker.html">Agent Picker</a>
+<a href="DiffMenu.html">Diff Menu</a>
+<a href="MCPManager.html">MCPManager</a>
+<a href="MainCLI.html">Main CLI</a>
+<a href="ModelPicker.html">Model Picker</a>
+<a href="ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="OnboardingWizard.html">Onboarding Wizard</a>
+<a href="SkillsMenu.html">Skills Menu</a>
+<a href="TerminalWebInterface.html" class="active">Terminal Web Interface</a>
+<a href="index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="view-terminal-web-interface">View: Terminal Web Interface</h1>
+<h2 id="overview">Overview</h2>
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Route</td>
+<td><code>/terminal</code> (web endpoint)</td>
+</tr>
+<tr>
+<td>Auth Required</td>
+<td>No (local access only)</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Full-screen terminal with header/footer</td>
+</tr>
+</tbody></table>
+<h2 id="what-does-this-view-do">What Does This View Do?</h2>
+<p>The Terminal Web Interface provides a browser-based interactive terminal for Code Puppy. It uses WebSockets to connect to a PTY (pseudo-terminal) on the server, allowing users to interact with Code Puppy from any web browser. The interface includes connection status indicators, session management, and terminal controls.</p>
+<h2 id="screenshot-wireframe">Screenshot/Wireframe</h2>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│ 🐶 Code Puppy Terminal                           ● Connected        │
+│                                                  Session: abc123    │
+│                                              [Reconnect] [Clear]    │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  🐶 Welcome to Code Puppy Terminal!                                 │
+│  Connecting to server...                                            │
+│                                                                     │
+│  &gt;&gt;&gt;                                                                │
+│                                                                     │
+│                                                                     │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│ 80x24                                              Ctrl+C to interrupt│
+│                                                  Ctrl+D to exit     │
+└─────────────────────────────────────────────────────────────────────┘</code></pre>
+<h2 id="user-actions">User Actions</h2>
+<table>
+<thead><tr>
+<th>Action</th>
+<th>Trigger</th>
+<th>Result</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Type commands</td>
+<td>Keyboard input</td>
+<td>Sent to PTY via WebSocket</td>
+</tr>
+<tr>
+<td>Resize terminal</td>
+<td>Window resize</td>
+<td>Terminal adjusts, PTY notified</td>
+</tr>
+<tr>
+<td>Clear terminal</td>
+<td>Clear button</td>
+<td>Clears terminal display</td>
+</tr>
+<tr>
+<td>Reconnect</td>
+<td>Reconnect button</td>
+<td>Re-establishes WebSocket connection</td>
+</tr>
+</tbody></table>
+<h2 id="page-structure">Page Structure</h2>
+<pre class="mermaid">
+flowchart TD
+    subgraph Header["Header"]
+        Logo["🐶 Code Puppy Terminal"]
+        Status["● Connected"]
+        Session["Session: abc123"]
+        Controls["[Reconnect] [Clear]"]
+    end
+    
+    subgraph Terminal["Terminal Container"]
+        Xterm["xterm.js Terminal"]
+        WebSocket["WebSocket Connection"]
+    end
+    
+    subgraph Footer["Footer"]
+        Size["80x24"]
+        Hints["Ctrl+C to interrupt"]
+    end
+    
+    Header --&gt; Terminal
+    Terminal --&gt; Footer
+    
+    WebSocket -.-&gt;|Real-time| Xterm
+</pre>
+<h2 id="components-used">Components Used</h2>
+<table>
+<thead><tr>
+<th>Component</th>
+<th>Purpose</th>
+<th>Version</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>xterm.js</code></td>
+<td>Terminal emulation</td>
+<td>5.3.0</td>
+</tr>
+<tr>
+<td><code>xterm-addon-fit</code></td>
+<td>Auto-resize</td>
+<td>0.8.0</td>
+</tr>
+<tr>
+<td><code>xterm-addon-web-links</code></td>
+<td>Clickable URLs</td>
+<td>0.9.0</td>
+</tr>
+<tr>
+<td><code>Tailwind CSS</code></td>
+<td>Styling</td>
+<td>CDN</td>
+</tr>
+<tr>
+<td><code>WebSocket</code></td>
+<td>Real-time communication</td>
+<td>Native</td>
+</tr>
+</tbody></table>
+<h2 id="state-management">State Management</h2>
+<table>
+<thead><tr>
+<th>State</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>terminal</code></td>
+<td>xterm instance</td>
+<td>Terminal emulation</td>
+</tr>
+<tr>
+<td><code>socket</code></td>
+<td>WebSocket</td>
+<td>Server connection</td>
+</tr>
+<tr>
+<td><code>reconnectAttempts</code></td>
+<td>int</td>
+<td>Track reconnection attempts</td>
+</tr>
+<tr>
+<td><code>CONFIG.sessionId</code></td>
+<td>string</td>
+<td>Unique session identifier</td>
+</tr>
+</tbody></table>
+<h2 id="data-flow">Data Flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant Browser
+    participant WebSocket
+    participant PTY
+    participant Agent
+    
+    Browser-&gt;&gt;WebSocket: Connect
+    WebSocket-&gt;&gt;PTY: Create session
+    PTY--&gt;&gt;WebSocket: Session created
+    WebSocket--&gt;&gt;Browser: Connected
+    Browser-&gt;&gt;Browser: User types
+    Browser-&gt;&gt;WebSocket: Send input
+    WebSocket-&gt;&gt;PTY: Write to PTY
+    PTY-&gt;&gt;Agent: Execute command
+    Agent--&gt;&gt;PTY: Output
+    PTY-&gt;&gt;WebSocket: Send output
+    WebSocket--&gt;&gt;Browser: Display output
+    Browser-&gt;&gt;Browser: Render in xterm
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Aspect</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Entry point</td>
+<td><code>code_puppy/api/app.py</code></td>
+<td>FastAPI app</td>
+</tr>
+<tr>
+<td>WebSocket handler</td>
+<td><code>code_puppy/api/websocket.py</code></td>
+<td>WebSocket logic</td>
+</tr>
+<tr>
+<td>PTY manager</td>
+<td><code>code_puppy/api/pty_manager.py</code></td>
+<td>PTY lifecycle</td>
+</tr>
+<tr>
+<td>Terminal UI</td>
+<td><code>code_puppy/api/templates/terminal.html</code></td>
+<td>Frontend</td>
+</tr>
+<tr>
+<td>Router</td>
+<td><code>code_puppy/api/routers/terminal.py</code></td>
+<td>Route definitions</td>
+</tr>
+</tbody></table>
+<h2 id="websocket-protocol">WebSocket Protocol</h2>
+<h3 id="messages-from-client">Messages from Client</h3>
+<pre><code class="language-json">{
+  "type": "input",
+  "data": "&lt;typed character&gt;"
+}</code></pre>
+<pre><code class="language-json">{
+  "type": "resize",
+  "cols": 80,
+  "rows": 24
+}</code></pre>
+<h3 id="messages-from-server">Messages from Server</h3>
+<pre><code class="language-json">{
+  "type": "output",
+  "data": "&lt;terminal output&gt;"
+}</code></pre>
+<pre><code class="language-json">{
+  "type": "error",
+  "message": "&lt;error description&gt;"
+}</code></pre>
+<h2 id="connection-states">Connection States</h2>
+<table>
+<thead><tr>
+<th>State</th>
+<th>Indicator</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Disconnected</td>
+<td>🔴 Red</td>
+<td>No connection</td>
+</tr>
+<tr>
+<td>Connecting</td>
+<td>🟡 Yellow</td>
+<td>Establishing connection</td>
+</tr>
+<tr>
+<td>Connected</td>
+<td>🟢 Green</td>
+<td>Active WebSocket</td>
+</tr>
+</tbody></table>
+<h2 id="terminal-configuration">Terminal Configuration</h2>
+<table>
+<thead><tr>
+<th>Setting</th>
+<th>Value</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Font family</td>
+<td>Cascadia Code, Fira Code, JetBrains Mono</td>
+<td>Monospace fonts</td>
+</tr>
+<tr>
+<td>Font size</td>
+<td>14px</td>
+<td>Terminal text size</td>
+</tr>
+<tr>
+<td>Line height</td>
+<td>1.2</td>
+<td>Spacing between lines</td>
+</tr>
+<tr>
+<td>Cursor</td>
+<td>Block, blinking</td>
+<td>Input indicator</td>
+</tr>
+<tr>
+<td>Scrollback</td>
+<td>10000 lines</td>
+<td>History buffer</td>
+</tr>
+<tr>
+<td>Theme</td>
+<td>Dark (VS Code-like)</td>
+<td>Color scheme</td>
+</tr>
+</tbody></table>
+<h2 id="url-parameters">URL Parameters</h2>
+<table>
+<thead><tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>session</code></td>
+<td>string</td>
+<td>Session identifier (optional)</td>
+</tr>
+</tbody></table>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>WebSocket reconnection</strong>: If the WebSocket disconnects, the user must manually click "Reconnect". Automatic reconnection is limited to 5 attempts.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Session isolation</strong>: Each session is isolated. Multiple browser tabs can run independent Code Puppy instances.</p>
+</div>
+<div class="callout callout-tip">
+<div class="callout-title">TIP</div>
+<p><strong>Terminal resize</strong>: The terminal automatically adjusts to window size. PTY is notified of resize events.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Local access only</strong>: The web interface is intended for local development. CORS and security should be configured for production use.</p>
+</div>
+<h2 id="security-considerations">Security Considerations</h2>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>No authentication</strong>: The web interface currently has no authentication. Only use on trusted networks.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>PTY access</strong>: Anyone with access to the terminal can execute arbitrary commands. Restrict access appropriately.</p>
+</div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="Concepts/APIArchitecture.html">Concept: API Architecture</a></li>
+<li><a href="Concepts/WebSocketIntegration.html">Concept: WebSocket Integration</a></li>
+<li><a href="Flows/StartingTheAPIServer.html">Flow: Starting the API Server</a></li>
+<li><a href="Endpoints/WebSocketTerminal.html">Endpoint: WebSocket /ws/terminal</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

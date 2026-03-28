@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: Terminal Integration — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="AgentCreation.html">Agent Creation</a>
+<a href="AgentSwitching.html">Agent Switching</a>
+<a href="BrowserControl.html">Browser Control</a>
+<a href="CustomSkills.html">Custom Skills</a>
+<a href="HookSystem.html">Hook System</a>
+<a href="JSONAgents.html">JSONAgents</a>
+<a href="MCPManagement.html">MCPManagement</a>
+<a href="MPCCatalog.html">MPCCatalog</a>
+<a href="ModelConfiguration.html">Model Configuration</a>
+<a href="ModelDiscovery.html">Model Discovery</a>
+<a href="PluginDevelopment.html">Plugin Development</a>
+<a href="PythonAgents.html">Python Agents</a>
+<a href="RoundRobinModels.html">Round Robin Models</a>
+<a href="SkillInstallation.html">Skill Installation</a>
+<a href="SkillUsage.html">Skill Usage</a>
+<a href="TaskScheduling.html">Task Scheduling</a>
+<a href="TerminalIntegration.html" class="active">Terminal Integration</a>
+<a href="UniversalConstructor.html">Universal Constructor</a>
+<a href="index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-terminal-integration">Feature: Terminal Integration</h1>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Terminal Integration provides Code Puppy with the ability to manage terminal state across platforms, run interactive shell sessions, and expose a web-based terminal interface. This enables agents to execute commands, interact with shells, and provides users with a browser-accessible terminal experience.</p>
+<h2 id="why-does-this-exist">Why Does This Exist?</h2>
+<p>Agents need to:</p>
+<ul>
+<li>Execute shell commands and capture output</li>
+<li>Handle terminal interrupts (Ctrl+C) gracefully</li>
+<li>Maintain terminal state across operations</li>
+<li>Provide a web-based terminal for remote access</li>
+</ul>
+<p>Users need:</p>
+<ul>
+<li>A browser-accessible terminal to interact with Code Puppy</li>
+<li>Cross-platform terminal compatibility (Windows, Linux, macOS)</li>
+<li>Proper handling of terminal edge cases (ANSI codes, interrupts)</li>
+</ul>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<ol>
+<li>Start Code Puppy API server with <code>/api_start</code></li>
+<li>Open browser to <code>http://localhost:8765/terminal</code></li>
+<li>Interact with a fully functional terminal via WebSocket</li>
+<li>Execute commands, view output, resize terminal</li>
+</ol>
+<h3 id="system-perspective">System Perspective</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant Browser
+    participant WebSocket
+    participant PTYManager
+    participant Shell
+    participant Agent
+
+    Browser-&gt;&gt;WebSocket: Connect to /ws/terminal
+    WebSocket-&gt;&gt;PTYManager: Create session
+    PTYManager-&gt;&gt;Shell: Fork process
+    Shell--&gt;&gt;PTYManager: Output
+    PTYManager-&gt;&gt;WebSocket: Send output (base64)
+    WebSocket--&gt;&gt;Browser: Display in xterm.js
+    
+    Browser-&gt;&gt;WebSocket: User input
+    WebSocket-&gt;&gt;PTYManager: Write to PTY
+    PTYManager-&gt;&gt;Shell: Send input
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Responsibility</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Terminal utilities</td>
+<td><code>code_puppy/terminal_utils.py</code></td>
+<td>Cross-platform reset, ANSI handling, Ctrl+C management</td>
+</tr>
+<tr>
+<td>CLI interactive mode</td>
+<td><code>code_puppy/cli_runner.py</code></td>
+<td>Main CLI loop, terminal setup, signal handling</td>
+</tr>
+<tr>
+<td>PTY session management</td>
+<td><code>code_puppy/api/pty_manager.py</code></td>
+<td>Unix (pty) and Windows (pywinpty) support</td>
+</tr>
+<tr>
+<td>WebSocket terminal</td>
+<td><code>code_puppy/api/websocket.py</code></td>
+<td><code>/ws/terminal</code> endpoint, message routing</td>
+</tr>
+<tr>
+<td>API server</td>
+<td><code>code_puppy/api/app.py</code></td>
+<td>FastAPI app, terminal page route</td>
+</tr>
+<tr>
+<td>Browser tools</td>
+<td><code>code_puppy/tools/browser/</code></td>
+<td>Browser initialization, terminal browser connection</td>
+</tr>
+<tr>
+<td>Terminal tools</td>
+<td><code>code_puppy/tools/browser/terminal_tools.py</code></td>
+<td>Check server, open/close terminal browser</td>
+</tr>
+</tbody></table>
+<h2 id="platform-specific-handling">Platform-Specific Handling</h2>
+<h3 id="windows">Windows</h3>
+<ul>
+<li>Uses <code>pywinpty</code> for PTY emulation</li>
+<li>Console mode management via <code>ctypes</code></li>
+<li>ANSI reset via escape sequences</li>
+<li>Ctrl+C disabled at console level to prevent terminal bricking</li>
+</ul>
+<h3 id="unix-linux-macos">Unix (Linux/macOS)</h3>
+<ul>
+<li>Uses native <code>pty</code> module</li>
+<li><code>reset</code> command for terminal restoration</li>
+<li>Signal handlers for graceful interrupts</li>
+</ul>
+<h2 id="configuration">Configuration</h2>
+<table>
+<thead><tr>
+<th>Setting</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>BROWSER_HEADLESS</code></td>
+<td>Browser visibility</td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td><code>COLORTERM</code></td>
+<td>Truecolor detection</td>
+<td>(auto-detect)</td>
+</tr>
+<tr>
+<td><code>TERM</code></td>
+<td>Terminal type</td>
+<td>(environment)</td>
+</tr>
+</tbody></table>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Windows + uvx</strong>: When launched via <code>uvx</code>, Ctrl+C is disabled at the console level to prevent terminal bricking. Use <code>Ctrl+K</code> to cancel agents instead.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Truecolor support</strong>: Code Puppy uses 24-bit color. Modern terminals (iTerm2, Windows Terminal, Kitty, Alacritty) recommended. Built-in macOS Terminal.app does not support truecolor.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Terminal reset</strong>: After interrupts, terminal state may be corrupted. <code>reset_terminal()</code> performs platform-specific restoration.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead><tr>
+<th>Scenario</th>
+<th>Behavior</th>
+<th>User Sees</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>PTY creation fails</td>
+<td>Session not created</td>
+<td>Error message with platform-specific cause</td>
+</tr>
+<tr>
+<td>WebSocket disconnect</td>
+<td>Session cleaned up</td>
+<td>Terminal shows "disconnected"</td>
+</tr>
+<tr>
+<td>Shell exits</td>
+<td>Session ends</td>
+<td>Output shows process exit</td>
+</tr>
+<tr>
+<td>Port in use</td>
+<td>API server fails to start</td>
+<td>Error: "No available ports in range 8090-9010"</td>
+</tr>
+</tbody></table>
+<h2 id="testing-this-feature">Testing This Feature</h2>
+<h3 id="manual-testing">Manual Testing</h3>
+<pre><code class="language-bash"># Start API server
+code-puppy /api_start
+
+# In browser, open:
+http://localhost:8765/terminal
+
+# Test commands:
+echo "Hello"      # Basic output
+ls -la            # Directory listing
+sleep 5           # Long-running command
+Ctrl+C            # Interrupt (or Ctrl+K on Windows+uvx)</code></pre>
+<h3 id="tool-testing">Tool Testing</h3>
+<pre><code class="language-python"># Check terminal server
+result = await check_terminal_server()
+assert result["success"] == True
+
+# Open terminal browser
+result = await open_terminal_browser()
+assert result["success"] == True</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="BrowserControl.html">Feature: Browser Control</a></li>
+<li><a href="../Flows/AgentExecution.html">Flow: Agent Execution</a></li>
+<li><a href="../Concepts/ToolRegistration.html">Concept: Tool Registration</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

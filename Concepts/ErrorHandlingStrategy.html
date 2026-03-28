@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept: Error Handling Strategy — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="AgentArchitecture.html">Agent Architecture</a>
+<a href="CallbackSystem.html">Callback System</a>
+<a href="ConfigurationManagement.html">Configuration Management</a>
+<a href="ErrorHandlingStrategy.html" class="active">Error Handling Strategy</a>
+<a href="MCPIntegration.html">MCPIntegration</a>
+<a href="ToolRegistration.html">Tool Registration</a>
+<a href="index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="concept-error-handling-strategy">Concept: Error Handling Strategy</h1>
+<h2 id="what-is-this">What Is This?</h2>
+<p>Error Handling Strategy defines how Code Puppy detects, logs, recovers from, and communicates errors throughout the system. It uses a <strong>multi-layered approach</strong> with structured logging, error isolation, and user-friendly messages to maintain system stability while providing actionable diagnostics.</p>
+<h2 id="why-this-approach">Why This Approach?</h2>
+<p>The error handling system uses <strong>defensive programming</strong> with <strong>graceful degradation</strong> to:</p>
+<ul>
+<li><strong>Maintain stability</strong>: One error doesn't crash the entire system</li>
+<li><strong>Enable debugging</strong>: Detailed logs for troubleshooting</li>
+<li><strong>Protect users</strong>: Clear error messages without exposing internals</li>
+<li><strong>Support recovery</strong>: Automatic retry and fallback mechanisms</li>
+<li><strong>Track issues</strong>: Centralized error logging for analysis</li>
+</ul>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="the-pattern">The Pattern</h3>
+<pre class="mermaid">
+flowchart TB
+    subgraph Detection["Error Detection"]
+        Try[Try/Except]
+        Validate[Validation]
+        Monitor[Monitoring]
+    end
+    
+    subgraph Handling["Error Handling"]
+        Log[Log Error]
+        Isolate[Isolate Component]
+        Recover[Recover/Fallback]
+        Notify[Notify User]
+    end
+    
+    subgraph Storage["Error Storage"]
+        File[Error Log File]
+        Memory[In-Memory State]
+    end
+    
+    Try --&gt; Handling
+    Validate --&gt; Handling
+    Monitor --&gt; Handling
+    
+    Handling --&gt; Log
+    Handling --&gt; Isolate
+    Handling --&gt; Recover
+    Handling --&gt; Notify
+    
+    Log --&gt; Storage
+</pre>
+<h3 id="example">Example</h3>
+<pre><code class="language-python">from code_puppy.error_logging import log_error
+
+try:
+    result = risky_operation()
+except Exception as e:
+    # Log with context
+    log_error(e, context="Failed to process file")
+    
+    # Provide fallback
+    result = fallback_value()
+    
+    # Notify user (via messaging system)
+    emit_warning(f"Could not process file: {e}")</code></pre>
+<h2 id="where-it-s-used">Where It's Used</h2>
+<table>
+<thead><tr>
+<th>Feature/Flow</th>
+<th>How It Uses This</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><a href="../Flows/AgentExecution.html">Agent Execution</a></td>
+<td>Catches and logs agent errors</td>
+</tr>
+<tr>
+<td><a href="../Flows/ToolCallExecution.html">Tool Call Execution</a></td>
+<td>Handles tool execution failures</td>
+</tr>
+<tr>
+<td><a href="MCPIntegration.html">MCP Integration</a></td>
+<td>Isolates server errors</td>
+</tr>
+<tr>
+<td><a href="../Flows/PluginLoading.html">Plugin Loading</a></td>
+<td>Prevents plugin errors from crashing app</td>
+</tr>
+</tbody></table>
+<h2 id="implementation-locations">Implementation Locations</h2>
+<table>
+<thead><tr>
+<th>Aspect</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Core logging</td>
+<td><code>code_puppy/error_logging.py</code></td>
+</tr>
+<tr>
+<td>MCP isolation</td>
+<td><code>code_puppy/mcp_/error_isolation.py</code></td>
+</tr>
+<tr>
+<td>Circuit breaker</td>
+<td><code>code_puppy/mcp_/circuit_breaker.py</code></td>
+</tr>
+<tr>
+<td>Retry logic</td>
+<td><code>code_puppy/mcp_/retry_manager.py</code></td>
+</tr>
+<tr>
+<td>Error messages</td>
+<td><code>code_puppy/messaging.py</code></td>
+</tr>
+</tbody></table>
+<h2 id="error-logging">Error Logging</h2>
+<h3 id="log-file-location">Log File Location</h3>
+<pre><code>XDG_STATE_HOME/code_puppy/logs/errors.log</code></pre>
+<p>Default: <code>~/.code_puppy/logs/errors.log</code></p>
+<h3 id="log-format">Log Format</h3>
+<pre><code>================================================================================
+Timestamp: 2024-01-15T10:30:45.123456
+Error Type: FileNotFoundError
+Error Message: File not found: /path/to/file
+Context: Failed to read file
+Traceback:
+  File "code_puppy/tools/file_operations.py", line 42, in read_file
+    with open(file_path) as f:
+FileNotFoundError: File not found: /path/to/file
+Args: ('File not found: /path/to/file',)
+================================================================================</code></pre>
+<h3 id="log-rotation">Log Rotation</h3>
+<ul>
+<li><strong>Max size</strong>: 5MB</li>
+<li><strong>Rotation</strong>: Renames to <code>.1</code> when exceeded</li>
+<li><strong>Retention</strong>: Single rotated file (simple rotation)</li>
+</ul>
+<h3 id="logging-functions">Logging Functions</h3>
+<pre><code class="language-python">from code_puppy.error_logging import log_error, log_error_message
+
+# Log an exception
+log_error(exception, context="Operation context", include_traceback=True)
+
+# Log a message without exception
+log_error_message("Something went wrong", context="Context")</code></pre>
+<h2 id="error-categories">Error Categories</h2>
+<h3 id="mcp-server-errors">MCP Server Errors</h3>
+<pre><code class="language-python">from code_puppy.mcp_.error_isolation import MCPErrorIsolator, ErrorCategory
+
+isolator = MCPErrorIsolator()
+
+# Categorize error
+category = isolator.categorize_error(error)
+
+# Track statistics
+stats = isolator.get_error_stats(server_id)</code></pre>
+<p><strong>Categories:</strong></p>
+<table>
+<thead><tr>
+<th>Category</th>
+<th>Description</th>
+<th>Action</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>authentication</code></td>
+<td>Auth failures</td>
+<td>Prompt user</td>
+</tr>
+<tr>
+<td><code>server_error</code></td>
+<td>Server-side errors</td>
+<td>Retry</td>
+</tr>
+<tr>
+<td><code>network_error</code></td>
+<td>Connection issues</td>
+<td>Retry with backoff</td>
+</tr>
+<tr>
+<td><code>timeout</code></td>
+<td>Request timeout</td>
+<td>Retry or fail</td>
+</tr>
+<tr>
+<td><code>validation</code></td>
+<td>Invalid request</td>
+<td>Fix request</td>
+</tr>
+<tr>
+<td><code>unknown</code></td>
+<td>Unrecognized</td>
+<td>Log and alert</td>
+</tr>
+</tbody></table>
+<h3 id="circuit-breaker-pattern">Circuit Breaker Pattern</h3>
+<pre><code class="language-python">from code_puppy.mcp_.circuit_breaker import CircuitBreaker
+
+breaker = CircuitBreaker(
+    failure_threshold=5,
+    recovery_timeout=30,
+    half_open_requests=3
+)
+
+try:
+    with breaker:
+        result = risky_operation()
+except CircuitOpenError:
+    # Circuit is open, operation blocked
+    result = fallback_value()</code></pre>
+<p><strong>States:</strong></p>
+<ul>
+<li><strong>Closed</strong>: Normal operation</li>
+<li><strong>Open</strong>: Too many failures, block requests</li>
+<li><strong>Half-Open</strong>: Testing if service recovered</li>
+</ul>
+<h2 id="error-recovery-strategies">Error Recovery Strategies</h2>
+<h3 id="retry-with-exponential-backoff">Retry with Exponential Backoff</h3>
+<pre><code class="language-python">from code_puppy.mcp_.retry_manager import get_retry_manager
+
+retry_manager = get_retry_manager()
+
+# Schedule retry
+retry_manager.schedule_retry(
+    server_id="my-server",
+    max_retries=3,
+    base_delay=1.0,  # seconds
+    max_delay=60.0
+)</code></pre>
+<h3 id="quarantine">Quarantine</h3>
+<pre><code class="language-python">from code_puppy.mcp_.manager import get_mcp_manager
+
+manager = get_mcp_manager()
+
+# Server automatically quarantined after repeated failures
+# Can be manually re-enabled
+manager.unquarantine_server(server_id)</code></pre>
+<h3 id="fallback-values">Fallback Values</h3>
+<pre><code class="language-python">def get_config_value(key, default=None):
+    try:
+        return get_value(key)
+    except Exception as e:
+        log_error(e, context=f"Failed to get config: {key}")
+        return default</code></pre>
+<h2 id="user-notification">User Notification</h2>
+<h3 id="messaging-system">Messaging System</h3>
+<pre><code class="language-python">from code_puppy.messaging import emit_error, emit_warning, emit_info
+
+# Error (red)
+emit_error("Failed to connect to server")
+
+# Warning (yellow)
+emit_warning("Using fallback configuration")
+
+# Info (normal)
+emit_info("Server restarted successfully")</code></pre>
+<h3 id="error-messages">Error Messages</h3>
+<table>
+<thead><tr>
+<th>Severity</th>
+<th>Display</th>
+<th>Action Required</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Error</td>
+<td>Red text</td>
+<td>User intervention</td>
+</tr>
+<tr>
+<td>Warning</td>
+<td>Yellow text</td>
+<td>Be aware</td>
+</tr>
+<tr>
+<td>Info</td>
+<td>Normal text</td>
+<td>Informational</td>
+</tr>
+</tbody></table>
+<h2 id="conventions-rules">Conventions &amp; Rules</h2>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Never crash</strong>: Catch exceptions at boundaries, don't let them propagate</p>
+</div>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Log everything</strong>: All errors must be logged with context</p>
+</div>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Fail gracefully</strong>: Provide fallbacks when possible</p>
+</div>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Don't leak</strong>: Don't expose internal errors to users</p>
+</div>
+<h2 id="anti-patterns-to-avoid">Anti-Patterns to Avoid</h2>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't swallow errors</strong>: Always log or handle exceptions</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't block</strong>: Logging should never block main execution</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't expose</strong>: Don't show stack traces to end users</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't ignore</strong>: Silent failures make debugging impossible</p>
+</div>
+<h2 id="error-handling-by-component">Error Handling by Component</h2>
+<h3 id="agents">Agents</h3>
+<pre><code class="language-python">from code_puppy.error_logging import log_error
+
+try:
+    result = await agent.run(prompt)
+except Exception as e:
+    log_error(e, context=f"Agent {agent.name} failed")
+    return "Sorry, I encountered an error while processing your request."</code></pre>
+<h3 id="tools">Tools</h3>
+<pre><code class="language-python">def read_file(file_path):
+    try:
+        with open(file_path) as f:
+            return f.read()
+    except FileNotFoundError:
+        emit_error(f"File not found: {file_path}")
+        return None
+    except Exception as e:
+        log_error(e, context=f"Failed to read file: {file_path}")
+        emit_error(f"Error reading file: {e}")
+        return None</code></pre>
+<h3 id="mcp-servers">MCP Servers</h3>
+<pre><code class="language-python">async def connect_server(config):
+    try:
+        server = await create_server(config)
+        await server.start()
+        return server
+    except Exception as e:
+        log_error(e, context=f"Failed to start server: {config.name}")
+        isolator.record_error(config.id, e)
+        raise</code></pre>
+<h2 id="debugging-errors">Debugging Errors</h2>
+<h3 id="check-error-logs">Check Error Logs</h3>
+<pre><code class="language-bash"># View recent errors
+tail -f ~/.code_puppy/logs/errors.log
+
+# Search for specific error
+grep "FileNotFoundError" ~/.code_puppy/logs/errors.log</code></pre>
+<h3 id="enable-debug-logging">Enable Debug Logging</h3>
+<pre><code class="language-python">import logging
+logging.getLogger("code_puppy").setLevel(logging.DEBUG)</code></pre>
+<h3 id="reproduce-issues">Reproduce Issues</h3>
+<ol>
+<li><strong>Check error logs</strong> for context</li>
+<li><strong>Reproduce the action</strong> that caused the error</li>
+<li><strong>Check component state</strong> (MCP servers, agents, etc.)</li>
+<li><strong>Review recent changes</strong> to config or code</li>
+</ol>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/MCPManagement.html">Feature: MCP Management</a></li>
+<li><a href="MCPIntegration.html">Concept: MCP Integration</a></li>
+<li><a href="../Flows/ToolCallExecution.html">Flow: Tool Call Execution</a></li>
+<li><a href="../Troubleshooting.html">Troubleshooting</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

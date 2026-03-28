@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: Skill Usage — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="AgentCreation.html">Agent Creation</a>
+<a href="AgentSwitching.html">Agent Switching</a>
+<a href="BrowserControl.html">Browser Control</a>
+<a href="CustomSkills.html">Custom Skills</a>
+<a href="HookSystem.html">Hook System</a>
+<a href="JSONAgents.html">JSONAgents</a>
+<a href="MCPManagement.html">MCPManagement</a>
+<a href="MPCCatalog.html">MPCCatalog</a>
+<a href="ModelConfiguration.html">Model Configuration</a>
+<a href="ModelDiscovery.html">Model Discovery</a>
+<a href="PluginDevelopment.html">Plugin Development</a>
+<a href="PythonAgents.html">Python Agents</a>
+<a href="RoundRobinModels.html">Round Robin Models</a>
+<a href="SkillInstallation.html">Skill Installation</a>
+<a href="SkillUsage.html" class="active">Skill Usage</a>
+<a href="TaskScheduling.html">Task Scheduling</a>
+<a href="TerminalIntegration.html">Terminal Integration</a>
+<a href="UniversalConstructor.html">Universal Constructor</a>
+<a href="index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-skill-usage">Feature: Skill Usage</h1>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Skill usage enables Code Puppy's AI agents to <strong>discover, activate, and leverage</strong> installed skills to accomplish user tasks. When a skill is available, agents can automatically detect it, load its instructions, and use its capabilities as part of their workflow.</p>
+<h2 id="why-does-this-exist">Why Does This Exist?</h2>
+<ul>
+<li><strong>Augmented Capabilities</strong>: Skills extend what agents can do without hardcoding every capability</li>
+<li><strong>Context-Aware Assistance</strong>: Agents match user requests to relevant skills automatically</li>
+<li><strong>Modular Design</strong>: Skills are self-contained with their own documentation and resources</li>
+<li><strong>User Control</strong>: Users can enable/disable specific skills based on their needs</li>
+</ul>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<ol>
+<li>User asks agent to do something (e.g., "analyze this data file")</li>
+<li>Agent sees available skills in system prompt</li>
+<li>Agent calls <code>activate_skill(skill_name)</code> to load full instructions</li>
+<li>Agent follows skill's guidance to complete the task</li>
+<li>User sees skill being used in agent's reasoning</li>
+</ol>
+<h3 id="system-perspective">System Perspective</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant Agent
+    participant Prompt
+    participant SkillsTools
+    participant SkillFiles
+    
+    User-&gt;&gt;Agent: "Analyze this CSV"
+    Agent-&gt;&gt;Prompt: Read system prompt
+    Prompt--&gt;&gt;Agent: &lt;available_skills&gt; XML
+    Agent-&gt;&gt;Agent: Match task to skill
+    Agent-&gt;&gt;SkillsTools: activate_skill("data-exploration")
+    SkillsTools-&gt;&gt;SkillFiles: Load SKILL.md
+    SkillFiles--&gt;&gt;SkillsTools: Full instructions
+    SkillsTools--&gt;&gt;Agent: Content + resources
+    Agent-&gt;&gt;Agent: Follow skill guidance
+    Agent-&gt;&gt;User: Task complete
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Responsibility</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Prompt injection</td>
+<td><code>code_puppy/plugins/agent_skills/register_callbacks.py</code></td>
+<td><code>get_model_system_prompt</code> callback</td>
+</tr>
+<tr>
+<td>Skill discovery</td>
+<td><code>code_puppy/plugins/agent_skills/discovery.py</code></td>
+<td>Scans configured directories</td>
+</tr>
+<tr>
+<td>Metadata parsing</td>
+<td><code>code_puppy/plugins/agent_skills/metadata.py</code></td>
+<td>Extracts from SKILL.md frontmatter</td>
+</tr>
+<tr>
+<td>XML builder</td>
+<td><code>code_puppy/plugins/agent_skills/prompt_builder.py</code></td>
+<td>Creates <code>&lt;available_skills&gt;</code> section</td>
+</tr>
+<tr>
+<td>Tool: activate_skill</td>
+<td><code>code_puppy/tools/skills_tools.py</code></td>
+<td>Loads full skill content</td>
+</tr>
+<tr>
+<td>Tool: list_or_search_skills</td>
+<td><code>code_puppy/tools/skills_tools.py</code></td>
+<td>Lists/searches available skills</td>
+</tr>
+<tr>
+<td>TUI menu</td>
+<td><code>code_puppy/plugins/agent_skills/skills_menu.py</code></td>
+<td>Interactive management</td>
+</tr>
+<tr>
+<td>Config</td>
+<td><code>code_puppy/plugins/agent_skills/config.py</code></td>
+<td>Enable/disable, directories</td>
+</tr>
+</tbody></table>
+<h2 id="configuration">Configuration</h2>
+<table>
+<thead><tr>
+<th>Setting</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>skills_enabled</code></td>
+<td>Globally enable/disable skills integration</td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td><code>skill_directories</code></td>
+<td>Directories to scan for skills</td>
+<td><code>~/.code_puppy/skills</code>, <code>./.code_puppy/skills</code>, <code>./skills</code></td>
+</tr>
+<tr>
+<td><code>disabled_skills</code></td>
+<td>List of skill names to exclude</td>
+<td><code>[]</code></td>
+</tr>
+</tbody></table>
+<h2 id="the-skill-lifecycle">The Skill Lifecycle</h2>
+<h3 id="1-discovery-phase-app-startup">1. Discovery Phase (App Startup)</h3>
+<pre><code class="language-python"># In register_callbacks.py
+register_callback("get_model_system_prompt", _inject_skills_into_prompt)</code></pre>
+<p>When the system prompt is built:</p>
+<ol>
+<li>Check if skills are enabled</li>
+<li>Scan configured directories</li>
+<li>Parse SKILL.md metadata for each</li>
+<li>Filter out disabled skills</li>
+<li>Build XML listing</li>
+</ol>
+<h3 id="2-prompt-injection">2. Prompt Injection</h3>
+<pre><code class="language-xml">&lt;available_skills&gt;
+  &lt;skill&gt;
+    &lt;name&gt;data-exploration&lt;/name&gt;
+    &lt;description&gt;Analyze and explore CSV/JSON data files&lt;/description&gt;
+  &lt;/skill&gt;
+  &lt;skill&gt;
+    &lt;name&gt;browser-control&lt;/name&gt;
+    &lt;description&gt;Automate browser interactions&lt;/description&gt;
+  &lt;/skill&gt;
+&lt;/available_skills&gt;
+
+# Agent Skills
+
+When `&lt;available_skills&gt;` appears in context, match user tasks to skill descriptions.
+Call `activate_skill(skill_name)` to load full instructions before starting the task.
+Use `list_or_search_skills(query)` to search for relevant skills.</code></pre>
+<h3 id="3-skill-activation-during-agent-run">3. Skill Activation (During Agent Run)</h3>
+<pre><code class="language-python"># Agent decides to use a skill
+agent: "I'll use the data-exploration skill for this"
+agent: activate_skill("data-exploration")
+
+# Tool handler loads full content
+content = load_full_skill_content(skill_path)
+resources = get_skill_resources(skill_path)
+
+# Content injected into conversation
+# Agent now has full instructions</code></pre>
+<h3 id="4-skill-execution">4. Skill Execution</h3>
+<p>The full SKILL.md content typically includes:</p>
+<ul>
+<li><strong>Purpose</strong>: What the skill does</li>
+<li><strong>Guidance</strong>: Step-by-step instructions</li>
+<li><strong>Resources</strong>: Associated files (scripts, configs, etc.)</li>
+<li><strong>Examples</strong>: Usage patterns</li>
+</ul>
+<h2 id="skill-metadata-format">Skill Metadata Format</h2>
+<p>Skills define metadata in SKILL.md frontmatter:</p>
+<pre><code class="language-markdown">---
+name: data-exploration
+description: Analyze and explore CSV/JSON data files
+version: 1.0
+author: Code Puppy
+tags:
+  - data
+  - analysis
+  - csv
+  - json
+---
+
+# Data Exploration Skill
+
+Full instructions go here...</code></pre>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Skills must have SKILL.md</strong> - Directories without SKILL.md are discovered but not included in prompts.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Disabled skills are hidden</strong> - Skills in <code>disabled_skills</code> config are completely excluded from agent context.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>XML escaping</strong> - Skill descriptions are XML-escaped to prevent prompt injection.</p>
+</div>
+<div class="callout callout-tip">
+<div class="callout-title">TIP</div>
+<p><strong>Use tags for discoverability</strong> - Agents search by name, description, AND tags.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead><tr>
+<th>Scenario</th>
+<th>Behavior</th>
+<th>Agent Sees</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Skill not found</td>
+<td>Returns error</td>
+<td>"Skill 'X' not found. Use list_or_search_skills to see available skills."</td>
+</tr>
+<tr>
+<td>Skills disabled</td>
+<td>Returns error</td>
+<td>"Skills integration is disabled. Enable it with /set skills_enabled=true"</td>
+</tr>
+<tr>
+<td>SKILL.md missing</td>
+<td>Returns error</td>
+<td>"Failed to load content for skill 'X'"</td>
+</tr>
+<tr>
+<td>Directory unreadable</td>
+<td>Skips silently</td>
+<td>Skill not included in list</td>
+</tr>
+</tbody></table>
+<h2 id="usage-examples">Usage Examples</h2>
+<h3 id="agent-automatically-uses-a-skill">Agent Automatically Uses a Skill</h3>
+<pre><code>User: "Can you analyze this sales.csv file?"
+
+Agent: "I'll use the data-exploration skill for this.
+        activate_skill('data-exploration')"
+
+# Skill content loaded, agent follows guidance
+Agent: "Reading sales.csv and computing summary statistics..."</code></pre>
+<h3 id="manual-skill-search">Manual Skill Search</h3>
+<pre><code>User: "What skills do I have for working with databases?"
+
+Agent: list_or_search_skills("database")
+
+# Returns matching skills
+[
+  {name: "sql-helper", description: "Generate and optimize SQL queries"},
+  {name: "postgres-admin", description: "PostgreSQL administration tasks"}
+]</code></pre>
+<h3 id="disable-a-skill">Disable a Skill</h3>
+<pre><code class="language-bash">&gt; /skills disable browser-control
+
+✓ Skill 'browser-control' has been disabled.</code></pre>
+<h2 id="testing-this-feature">Testing This Feature</h2>
+<h3 id="manual-test">Manual Test</h3>
+<ol>
+<li>Install a skill: <code>/skills install</code></li>
+<li>Start a new agent session</li>
+<li>Ask the agent to do something the skill handles</li>
+<li>Verify agent calls <code>activate_skill()</code></li>
+<li>Check that skill content is loaded</li>
+</ol>
+<h3 id="verify-skill-is-in-prompt">Verify Skill is in Prompt</h3>
+<pre><code class="language-python"># Check system prompt contains &lt;available_skills&gt;
+# Look for skill name and description</code></pre>
+<h3 id="test-skill-activation">Test Skill Activation</h3>
+<pre><code class="language-python"># Call activate_skill directly
+result = activate_skill("data-exploration")
+assert result.content != ""
+assert "SKILL.md" content in result.content</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="SkillInstallation.html">Feature: Skill Installation</a> - How to install skills</li>
+<li><a href="CustomSkills.html">Feature: Custom Skills</a> - Creating your own skills</li>
+<li><a href="../Concepts/ToolRegistration.html">Concept: Tool Registration</a> - How skills register tools</li>
+<li><a href="../Flows/ToolCallExecution.html">Flow: Tool Call Execution</a> - How tool calls are processed</li>
+<li><a href="../Guides/UseSkills.html">Guide: Use Skills</a> - Detailed usage guide</li>
+<li><a href="../Guides/CreateSkills.html">Guide: Create Skills</a> - Creating custom skills</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

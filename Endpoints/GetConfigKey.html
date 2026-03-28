@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Endpoint: GET /api/config/{key} — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="CommandAutocomplete.html">Command Autocomplete</a>
+<a href="DeleteConfigKey.html">Delete Config Key</a>
+<a href="DeleteSession.html">Delete Session</a>
+<a href="ExecuteCommand.html">Execute Command</a>
+<a href="GetCommand.html">Get Command</a>
+<a href="GetConfig.html">Get Config</a>
+<a href="GetConfigKey.html" class="active">Get Config Key</a>
+<a href="GetSession.html">Get Session</a>
+<a href="GetSessionMessages.html">Get Session Messages</a>
+<a href="ListAgents.html">List Agents</a>
+<a href="ListCommands.html">List Commands</a>
+<a href="ListConfigKeys.html">List Config Keys</a>
+<a href="ListSessions.html">List Sessions</a>
+<a href="SetConfigKey.html">Set Config Key</a>
+<a href="index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="endpoint-get-api-config-key">Endpoint: GET /api/config/{key}</h1>
+<h2 id="overview">Overview</h2>
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Method</td>
+<td><code>GET</code></td>
+</tr>
+<tr>
+<td>Path</td>
+<td><code>/api/config/{key}</code></td>
+</tr>
+<tr>
+<td>Auth</td>
+<td><code>public</code></td>
+</tr>
+<tr>
+<td>Rate Limit</td>
+<td><code>N/A</code></td>
+</tr>
+</tbody></table>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Retrieves a specific configuration value from the code_puppy configuration file (<code>~/.code_puppy/puppy.cfg</code> or XDG config location). This endpoint allows external tools and integrations to query individual configuration settings without exposing the entire config.</p>
+<h2 id="request">Request</h2>
+<h3 id="path-parameters">Path Parameters</h3>
+<table>
+<thead><tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td>string</td>
+<td>The configuration key to retrieve (e.g., <code>model</code>, <code>yolo_mode</code>, <code>enable_dbos</code>)</td>
+</tr>
+</tbody></table>
+<h3 id="headers">Headers</h3>
+<table>
+<thead><tr>
+<th>Header</th>
+<th>Required</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Content-Type</td>
+<td>no</td>
+<td><code>application/json</code> (for response)</td>
+</tr>
+</tbody></table>
+<h2 id="response">Response</h2>
+<h3 id="success-response-200-ok">Success Response (200 OK)</h3>
+<p>Returns the configuration value for the requested key.</p>
+<pre><code class="language-json">{
+  "key": "model",
+  "value": "gpt-4o"
+}</code></pre>
+<p><strong>Response Schema:</strong></p>
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td>string</td>
+<td>The requested configuration key</td>
+</tr>
+<tr>
+<td><code>value</code></td>
+<td>any</td>
+<td>The current value of the config key (string, number, boolean, or null)</td>
+</tr>
+</tbody></table>
+<h3 id="error-responses">Error Responses</h3>
+<table>
+<thead><tr>
+<th>Status</th>
+<th>Code</th>
+<th>When</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>404</td>
+<td><code>NOT_FOUND</code></td>
+<td>The requested config key does not exist</td>
+</tr>
+</tbody></table>
+<p><strong>404 Error Response:</strong></p>
+<pre><code class="language-json">{
+  "detail": "Config key 'invalid_key' not found. Valid keys: [\"allow_recursion\", \"auto_save_session\", ...]"
+}</code></pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Layer</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Route definition</td>
+<td><code>code_puppy/api/routers/config.py</code></td>
+<td>Line 33-42</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>get_config_value()</code></td>
+<td>Validates key exists</td>
+</tr>
+<tr>
+<td>Config access</td>
+<td><code>code_puppy/config.py</code></td>
+<td><code>get_value()</code> and <code>get_config_keys()</code></td>
+</tr>
+</tbody></table>
+<h2 id="flow">Flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant Client
+    participant Router
+    participant Handler
+    participant Config
+    
+    Client-&gt;&gt;Router: GET /api/config/{key}
+    Router-&gt;&gt;Handler: get_config_value(key)
+    Handler-&gt;&gt;Config: get_config_keys()
+    Config--&gt;&gt;Handler: List of valid keys
+    Handler-&gt;&gt;Handler: Validate key in list
+    alt Key exists
+        Handler-&gt;&gt;Config: get_value(key)
+        Config--&gt;&gt;Handler: Config value
+        Handler--&gt;&gt;Client: 200 OK + {key, value}
+    else Key not found
+        Handler--&gt;&gt;Client: 404 NOT_FOUND + error message
+    end
+</pre>
+<h2 id="configuration-keys">Configuration Keys</h2>
+<p>The following keys are currently supported:</p>
+<h3 id="core-settings">Core Settings</h3>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>model</code></td>
+<td>string</td>
+<td>First in <code>models.json</code></td>
+<td>Currently selected model</td>
+</tr>
+<tr>
+<td><code>yolo_mode</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Skip safety confirmations</td>
+</tr>
+<tr>
+<td><code>temperature</code></td>
+<td>float</td>
+<td><code>1.0</code></td>
+<td>Model temperature</td>
+</tr>
+<tr>
+<td><code>default_agent</code></td>
+<td>string</td>
+<td><code>code-puppy</code></td>
+<td>Default agent to use</td>
+</tr>
+</tbody></table>
+<h3 id="session-management">Session Management</h3>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>auto_save_session</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Auto-save chat sessions</td>
+</tr>
+<tr>
+<td><code>max_saved_sessions</code></td>
+<td>integer</td>
+<td><code>10</code></td>
+<td>Maximum sessions to keep</td>
+</tr>
+<tr>
+<td><code>resume_message_count</code></td>
+<td>integer</td>
+<td><code>50</code></td>
+<td>Messages to load on resume</td>
+</tr>
+</tbody></table>
+<h3 id="message-history">Message History</h3>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>compaction_strategy</code></td>
+<td>string</td>
+<td><code>recent</code></td>
+<td>History compaction strategy</td>
+</tr>
+<tr>
+<td><code>protected_token_count</code></td>
+<td>integer</td>
+<td><code>5000</code></td>
+<td>Tokens to protect from compaction</td>
+</tr>
+<tr>
+<td><code>compaction_threshold</code></td>
+<td>integer</td>
+<td><code>10000</code></td>
+<td>Trigger compaction at this threshold</td>
+</tr>
+<tr>
+<td><code>message_limit</code></td>
+<td>integer</td>
+<td><code>500</code></td>
+<td>Maximum messages to keep</td>
+</tr>
+</tbody></table>
+<h3 id="safety-permissions">Safety &amp; Permissions</h3>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>allow_recursion</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Allow recursive tool calls</td>
+</tr>
+<tr>
+<td><code>cancel_agent_key</code></td>
+<td>string</td>
+<td><code>Ctrl+C</code></td>
+<td>Key to cancel running agent</td>
+</tr>
+</tbody></table>
+<h3 id="mcp-features">MCP &amp; Features</h3>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>enable_dbos</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Enable DBOS persistence</td>
+</tr>
+<tr>
+<td><code>enable_pack_agents</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Enable pack sub-agents</td>
+</tr>
+<tr>
+<td><code>enable_universal_constructor</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Enable dynamic tool creation</td>
+</tr>
+<tr>
+<td><code>enable_streaming</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Use SSE streaming</td>
+</tr>
+</tbody></table>
+<h3 id="ui-display">UI &amp; Display</h3>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>diff_context_lines</code></td>
+<td>integer</td>
+<td><code>3</code></td>
+<td>Lines of context in diffs</td>
+</tr>
+<tr>
+<td><code>http2</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Use HTTP/2 for requests</td>
+</tr>
+<tr>
+<td><code>banner_color_*</code></td>
+<td>string</td>
+<td>Various</td>
+<td>Custom banner colors</td>
+</tr>
+</tbody></table>
+<h3 id="openai-specific">OpenAI Specific</h3>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>openai_reasoning_effort</code></td>
+<td>string</td>
+<td><code>medium</code></td>
+<td>Reasoning effort level</td>
+</tr>
+<tr>
+<td><code>openai_verbosity</code></td>
+<td>string</td>
+<td><code>medium</code></td>
+<td>Response verbosity</td>
+</tr>
+</tbody></table>
+<h3 id="frontend-integration">Frontend Integration</h3>
+<table>
+<thead><tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>frontend_emitter_enabled</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Enable frontend event emitter</td>
+</tr>
+<tr>
+<td><code>frontend_emitter_max_recent_events</code></td>
+<td>integer</td>
+<td><code>100</code></td>
+<td>Max recent events to keep</td>
+</tr>
+<tr>
+<td><code>frontend_emitter_queue_size</code></td>
+<td>integer</td>
+<td><code>1000</code></td>
+<td>Event queue size</td>
+</tr>
+</tbody></table>
+<h2 id="examples">Examples</h2>
+<h3 id="example-request">Example Request</h3>
+<pre><code class="language-bash">curl -X GET 'http://localhost:8000/api/config/model'</code></pre>
+<h3 id="example-response-success">Example Response (Success)</h3>
+<pre><code class="language-json">{
+  "key": "model",
+  "value": "gpt-4o"
+}</code></pre>
+<h3 id="example-response-not-found">Example Response (Not Found)</h3>
+<pre><code class="language-bash">curl -X GET 'http://localhost:8000/api/config/invalid_key'</code></pre>
+<pre><code class="language-json">{
+  "detail": "Config key 'invalid_key' not found. Valid keys: [\"allow_recursion\", \"auto_save_session\", \"auto_save_session\", ...]"
+}</code></pre>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Key validation</strong>: The endpoint validates that the requested key exists in the combined set of: - Keys currently in <code>puppy.cfg</code> - Preset expected keys (e.g., <code>yolo_mode</code>, <code>model</code>, <code>enable_dbos</code>) Even if a key doesn't exist in the file yet, it will be recognized if it's in the preset list.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Boolean values</strong>: Boolean config values are stored as strings (<code>"true"</code>/<code>"false"</code>) in the config file but returned as-is. The API doesn't convert them to JSON booleans.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Null values</strong>: If a key exists in the preset list but has no value in the config file, the endpoint will return <code>null</code> as the value.</p>
+</div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="ListConfig.html">Endpoint: GET /api/config</a> - List all configuration values</li>
+<li><a href="ListConfigKeys.html">Endpoint: GET /api/config/keys</a> - Get list of valid keys only</li>
+<li><a href="SetConfigKey.html">Endpoint: PUT /api/config/{key}</a> - Set a configuration value</li>
+<li><a href="DeleteConfigKey.html">Endpoint: DELETE /api/config/{key}</a> - Reset a configuration value</li>
+<li><a href="../Concepts/Configuration.html">Concept: Configuration Management</a> - How config works</li>
+<li><a href="../Guides/Commands.html">Guide: Commands</a> - CLI commands for config</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept: Callback System — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="AgentArchitecture.html">Agent Architecture</a>
+<a href="CallbackSystem.html" class="active">Callback System</a>
+<a href="ConfigurationManagement.html">Configuration Management</a>
+<a href="ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="MCPIntegration.html">MCPIntegration</a>
+<a href="ToolRegistration.html">Tool Registration</a>
+<a href="index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="concept-callback-system">Concept: Callback System</h1>
+<h2 id="what-is-this">What Is This?</h2>
+<p>The Callback System is Code Puppy's <strong>plugin extension mechanism</strong> that allows plugins to hook into various phases of the application lifecycle. It uses a <strong>publish-subscribe pattern</strong> where plugins register callback functions that are triggered at specific events, enabling modular, non-invasive extensions to core functionality.</p>
+<h2 id="why-this-approach">Why This Approach?</h2>
+<p>The callback system uses <strong>event-driven architecture</strong> to:</p>
+<ul>
+<li><strong>Enable modularity</strong>: Plugins can extend without modifying core code</li>
+<li><strong>Support composition</strong>: Multiple plugins can react to the same event</li>
+<li><strong>Allow interception</strong>: Plugins can modify or block operations</li>
+<li><strong>Provide observability</strong>: Track and log system events</li>
+<li><strong>Maintain separation</strong>: Core and plugins remain decoupled</li>
+</ul>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="the-pattern">The Pattern</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant Core
+    participant Dispatcher
+    participant Plugin1
+    participant Plugin2
+    
+    Core-&gt;&gt;Dispatcher: Trigger event
+    Dispatcher-&gt;&gt;Plugin1: Call callback
+    Plugin1--&gt;&gt;Dispatcher: Return result
+    Dispatcher-&gt;&gt;Plugin2: Call callback
+    Plugin2--&gt;&gt;Dispatcher: Return result
+    Dispatcher--&gt;&gt;Core: Aggregate results
+</pre>
+<h3 id="example">Example</h3>
+<pre><code class="language-python">from code_puppy.callbacks import register_callback
+
+# Register a callback for startup
+def on_app_startup():
+    print("Plugin initialized!")
+
+register_callback("startup", on_app_startup)
+
+# Register a callback for tool calls
+async def on_tool_call(tool_name, tool_args, context=None):
+    print(f"Tool {tool_name} called with {tool_args}")
+
+register_callback("pre_tool_call", on_tool_call)</code></pre>
+<h2 id="where-it-s-used">Where It's Used</h2>
+<table>
+<thead><tr>
+<th>Feature/Flow</th>
+<th>How It Uses This</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><a href="../Features/PluginDevelopment.html">Plugin Development</a></td>
+<td>Plugins register via callbacks</td>
+</tr>
+<tr>
+<td><a href="../Flows/ToolCallExecution.html">Tool Call Execution</a></td>
+<td>Hooks before/after tool calls</td>
+</tr>
+<tr>
+<td><a href="../Flows/AgentExecution.html">Agent Execution</a></td>
+<td>Hooks at agent lifecycle events</td>
+</tr>
+<tr>
+<td><a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a></td>
+<td>Real-time event broadcasting</td>
+</tr>
+</tbody></table>
+<h2 id="implementation-locations">Implementation Locations</h2>
+<table>
+<thead><tr>
+<th>Aspect</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Core system</td>
+<td><code>code_puppy/callbacks.py</code></td>
+</tr>
+<tr>
+<td>Type definitions</td>
+<td><code>code_puppy/callbacks.py</code> → <code>PhaseType</code></td>
+</tr>
+<tr>
+<td>Registration</td>
+<td><code>code_puppy/callbacks.py</code> → <code>register_callback()</code></td>
+</tr>
+<tr>
+<td>Triggering</td>
+<td><code>code_puppy/callbacks.py</code> → <code>on_*()</code> functions</td>
+</tr>
+<tr>
+<td>Plugin loader</td>
+<td><code>code_puppy/plugins/loader.py</code></td>
+</tr>
+</tbody></table>
+<h2 id="callback-phases">Callback Phases</h2>
+<h3 id="lifecycle-hooks">Lifecycle Hooks</h3>
+<table>
+<thead><tr>
+<th>Hook</th>
+<th>When</th>
+<th>Signature</th>
+<th>Can Block?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>startup</code></td>
+<td>App boot</td>
+<td><code>() -&gt; None</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>shutdown</code></td>
+<td>Graceful exit</td>
+<td><code>() -&gt; None</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>agent_reload</code></td>
+<td>Agent reload</td>
+<td><code>(*args, **kwargs)</code></td>
+<td>No</td>
+</tr>
+</tbody></table>
+<h3 id="agent-hooks">Agent Hooks</h3>
+<table>
+<thead><tr>
+<th>Hook</th>
+<th>When</th>
+<th>Signature</th>
+<th>Can Block?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>invoke_agent</code></td>
+<td>Sub-agent invoked</td>
+<td><code>(*args, **kwargs)</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>agent_exception</code></td>
+<td>Unhandled agent error</td>
+<td><code>(exception, *args, **kwargs)</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>agent_run_start</code></td>
+<td>Before agent task</td>
+<td><code>(agent_name, model_name, session_id)</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>agent_run_end</code></td>
+<td>After agent run</td>
+<td><code>(agent_name, model_name, session_id, success, error, response_text, metadata)</code></td>
+<td>No</td>
+</tr>
+</tbody></table>
+<h3 id="tool-hooks">Tool Hooks</h3>
+<table>
+<thead><tr>
+<th>Hook</th>
+<th>When</th>
+<th>Signature</th>
+<th>Can Block?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>pre_tool_call</code></td>
+<td>Before tool executes</td>
+<td><code>(tool_name, tool_args, context)</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>post_tool_call</code></td>
+<td>After tool finishes</td>
+<td><code>(tool_name, tool_args, result, duration_ms, context)</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>edit_file</code></td>
+<td>Before file edit</td>
+<td><code>(context, file_path, ...)</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>create_file</code></td>
+<td>Before file create</td>
+<td><code>(context, file_path, ...)</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>replace_in_file</code></td>
+<td>Before replace</td>
+<td><code>(context, file_path, ...)</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>delete_snippet</code></td>
+<td>Before delete</td>
+<td><code>(context, file_path, ...)</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>delete_file</code></td>
+<td>Before delete file</td>
+<td><code>(context, file_path, ...)</code></td>
+<td>Yes</td>
+</tr>
+</tbody></table>
+<h3 id="command-hooks">Command Hooks</h3>
+<table>
+<thead><tr>
+<th>Hook</th>
+<th>When</th>
+<th>Signature</th>
+<th>Can Block?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>run_shell_command</code></td>
+<td>Before shell exec</td>
+<td><code>(context, command, cwd, timeout)</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>custom_command</code></td>
+<td>Unknown <code>/slash</code> cmd</td>
+<td><code>(command, name)</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>custom_command_help</code></td>
+<td><code>/help</code> menu</td>
+<td><code>() -&gt; list[tuple[str, str]]</code></td>
+<td>No</td>
+</tr>
+</tbody></table>
+<h3 id="configuration-hooks">Configuration Hooks</h3>
+<table>
+<thead><tr>
+<th>Hook</th>
+<th>When</th>
+<th>Signature</th>
+<th>Can Block?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>load_prompt</code></td>
+<td>System prompt assembly</td>
+<td><code>() -&gt; str</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>load_model_config</code></td>
+<td>Patch model config</td>
+<td><code>(*args, **kwargs)</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>load_models_config</code></td>
+<td>Inject models</td>
+<td><code>() -&gt; dict</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>get_model_system_prompt</code></td>
+<td>Per-model prompt</td>
+<td><code>(model_name, default_prompt, user_prompt)</code></td>
+<td>No</td>
+</tr>
+</tbody></table>
+<h3 id="registration-hooks">Registration Hooks</h3>
+<table>
+<thead><tr>
+<th>Hook</th>
+<th>When</th>
+<th>Signature</th>
+<th>Can Block?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>register_tools</code></td>
+<td>Tool registration</td>
+<td><code>() -&gt; list[dict]</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>register_agents</code></td>
+<td>Agent catalogue</td>
+<td><code>() -&gt; list[dict]</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>register_model_type</code></td>
+<td>Custom model type</td>
+<td><code>() -&gt; list[dict]</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>register_mcp_catalog_servers</code></td>
+<td>MCP catalog</td>
+<td><code>() -&gt; list[dict]</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>register_browser_types</code></td>
+<td>Browser types</td>
+<td><code>() -&gt; list[dict]</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>register_model_providers</code></td>
+<td>Model providers</td>
+<td><code>() -&gt; list[dict]</code></td>
+<td>No</td>
+</tr>
+</tbody></table>
+<h3 id="monitoring-hooks">Monitoring Hooks</h3>
+<table>
+<thead><tr>
+<th>Hook</th>
+<th>When</th>
+<th>Signature</th>
+<th>Can Block?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>stream_event</code></td>
+<td>Response streaming</td>
+<td><code>(event_type, event_data, agent_session_id)</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>file_permission</code></td>
+<td>Before file op</td>
+<td><code>(context, file_path, operation, ...)</code></td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>get_motd</code></td>
+<td>Banner</td>
+<td><code>() -&gt; tuple[str, str]</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>message_history_processor_start</code></td>
+<td>Before processing</td>
+<td><code>(*args, **kwargs)</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>message_history_processor_end</code></td>
+<td>After processing</td>
+<td><code>(*args, **kwargs)</code></td>
+<td>No</td>
+</tr>
+</tbody></table>
+<h2 id="registration">Registration</h2>
+<h3 id="basic-registration">Basic Registration</h3>
+<pre><code class="language-python">from code_puppy.callbacks import register_callback
+
+def my_callback():
+    print("Event occurred!")
+
+register_callback("startup", my_callback)</code></pre>
+<h3 id="async-callbacks">Async Callbacks</h3>
+<pre><code class="language-python">import asyncio
+
+async def async_callback():
+    await asyncio.sleep(1)
+    print("Async event handled!")
+
+register_callback("startup", async_callback)</code></pre>
+<h3 id="plugin-registration">Plugin Registration</h3>
+<pre><code class="language-python"># In plugin's register_callbacks.py
+from code_puppy.callbacks import register_callback
+
+def _on_startup():
+    print("Plugin loaded!")
+
+def _on_tool_call(tool_name, tool_args, context=None):
+    print(f"Tool called: {tool_name}")
+
+register_callback("startup", _on_startup)
+register_callback("pre_tool_call", _on_tool_call)</code></pre>
+<h2 id="triggering-callbacks">Triggering Callbacks</h2>
+<h3 id="sync-triggers">Sync Triggers</h3>
+<pre><code class="language-python">from code_puppy.callbacks import on_load_prompt
+
+# Returns list of results from all callbacks
+results = on_load_prompt()</code></pre>
+<h3 id="async-triggers">Async Triggers</h3>
+<pre><code class="language-python">from code_puppy.callbacks import on_stream_event
+
+# Returns coroutine
+async def handle_stream():
+    results = await on_stream_event("token", {"text": "hello"})</code></pre>
+<h3 id="blocking-vs-non-blocking">Blocking vs Non-Blocking</h3>
+<ul>
+<li><strong>Blocking hooks</strong> can return <code>True</code>/<code>False</code> to allow/deny operation</li>
+<li><strong>Non-blocking hooks</strong> are for observation only</li>
+<li><strong>All callbacks are called</strong> even if one fails</li>
+</ul>
+<h2 id="error-handling">Error Handling</h2>
+<h3 id="callback-failures">Callback Failures</h3>
+<pre><code class="language-python"># Callbacks that fail are logged but don't break the flow
+try:
+    result = callback(*args, **kwargs)
+except Exception as e:
+    logger.error(f"Callback {callback.__name__} failed: {e}")
+    results.append(None)</code></pre>
+<h3 id="duplicate-prevention">Duplicate Prevention</h3>
+<pre><code class="language-python"># Same callback can't be registered twice
+if func in _callbacks[phase]:
+    logger.debug(f"Callback {func.__name__} already registered, skipping")
+    return</code></pre>
+<h2 id="return-values">Return Values</h2>
+<h3 id="blocking-hooks">Blocking Hooks</h3>
+<pre><code class="language-python"># Can block operations
+def on_file_permission(context, file_path, operation, ...):
+    # Return False to deny
+    if not is_allowed(file_path):
+        return False
+    return True
+
+# Can block shell commands
+def on_run_shell_command(context, command, ...):
+    if is_blocked(command):
+        return {"blocked": True}
+    return None</code></pre>
+<h3 id="data-collection-hooks">Data Collection Hooks</h3>
+<pre><code class="language-python"># Collect data from multiple plugins
+def on_register_tools():
+    # Returns list of tool definitions
+    return [
+        {"name": "tool1", "register_func": register_tool1},
+        {"name": "tool2", "register_func": register_tool2},
+    ]</code></pre>
+<h3 id="custom-commands">Custom Commands</h3>
+<pre><code class="language-python"># Handle custom slash commands
+def on_custom_command(command, name):
+    if name == "mycommand":
+        # Return True to indicate handled
+        return True
+    # Return None to continue to next handler
+    return None</code></pre>
+<h2 id="conventions-rules">Conventions &amp; Rules</h2>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>One registration per plugin</strong>: Each plugin should have one <code>register_callbacks.py</code></p>
+</div>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Fail gracefully</strong>: Never let callback errors crash the app</p>
+</div>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Return None for non-handlers</strong>: Return <code>None</code> from hooks you don't own</p>
+</div>
+<div class="callout callout-important">
+<div class="callout-title">IMPORTANT</div>
+<p><strong>Use async for I/O</strong>: Use async callbacks for network/disk operations</p>
+</div>
+<h2 id="anti-patterns-to-avoid">Anti-Patterns to Avoid</h2>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't block unnecessarily</strong>: Only block when you need to prevent an operation</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't raise exceptions</strong>: Log errors instead of raising</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't modify shared state</strong>: Use thread-safe operations</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Don't register duplicates</strong>: The system prevents this, but it's wasteful</p>
+</div>
+<h2 id="extending-this">Extending This</h2>
+<p>To add a new callback phase:</p>
+<ol>
+<li><strong>Add to PhaseType</strong> in <code>callbacks.py</code>: ```python PhaseType = Literal[ # ... existing phases ... "my_new_phase", ] ```</li>
+</ol>
+<ol>
+<li><strong>Initialize the list</strong>: ```python _callbacks: Dict[PhaseType, List[CallbackFunc]] = { # ... existing phases ... "my_new_phase": [], } ```</li>
+</ol>
+<ol>
+<li><strong>Create trigger function</strong>: ```python async def on_my_new_phase(<em>args, </em>*kwargs): return await _trigger_callbacks("my_new_phase", <em>args, </em>*kwargs) ```</li>
+</ol>
+<ol>
+<li><strong>Document the phase</strong> in this concept doc</li>
+</ol>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/PluginDevelopment.html">Feature: Plugin Development</a></li>
+<li><a href="../Features/HookSystem.html">Feature: Hook System</a></li>
+<li><a href="../Flows/PluginLoading.html">Flow: Plugin Loading</a></li>
+<li><a href="../Flows/ToolCallExecution.html">Flow: Tool Call Execution</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

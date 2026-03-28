@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow: Running a Task — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="AddingAModel.html">Adding AModel</a>
+<a href="AgentExecution.html">Agent Execution</a>
+<a href="FirstTimeSetup.html">First Time Setup</a>
+<a href="InstallingASkill.html">Installing ASkill</a>
+<a href="MessageHistoryProcessing.html">Message History Processing</a>
+<a href="PluginLoading.html">Plugin Loading</a>
+<a href="RunningATask.html" class="active">Running ATask</a>
+<a href="StreamEventProcessing.html">Stream Event Processing</a>
+<a href="ToolCallExecution.html">Tool Call Execution</a>
+<a href="index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="flow-running-a-task">Flow: Running a Task</h1>
+<h2 id="what-happens">What Happens?</h2>
+<p>This flow describes how Code Puppy processes a user's coding task from initial input through agent execution and response delivery. It covers the complete journey from typing a command to receiving the agent's response with full support for attachments, cancellation, and MCP tool integration.</p>
+<h2 id="trigger">Trigger</h2>
+<p>A user task is initiated by:</p>
+<ul>
+<li><strong>Interactive mode</strong>: User types a prompt at the CLI and presses Enter</li>
+<li><strong>Single prompt mode</strong>: <code>code-puppy -p "your task"</code> command line flag</li>
+<li><strong>Initial command</strong>: <code>code-puppy "your task"</code> (deprecated but supported)</li>
+</ul>
+<h2 id="outcome">Outcome</h2>
+<p>The agent processes the task, executes any necessary tool calls (file operations, shell commands, MCP tools), and returns a structured response that is streamed back to the user with proper markdown formatting.</p>
+<h2 id="step-by-step">Step-by-Step</h2>
+<pre class="mermaid">
+flowchart TD
+    A[User Input] --&gt; B{Shell Passthrough?}
+    B --&gt;|Yes: !cmd| C[Execute Directly]
+    B --&gt;|No| D[Parse Attachments]
+    D --&gt; E[Get Clipboard Images]
+    E --&gt; F[Build Prompt Payload]
+    F --&gt; G{Has Attachments?}
+    G --&gt;|Yes| H[Combine with Text]
+    G --&gt;|No| I[Text Only]
+    H --&gt; J[Create Agent Task]
+    I --&gt; J
+    J --&gt; K[Fire agent_run_start Hook]
+    K --&gt; L[Run Agent with MCP]
+    L --&gt; M{Execution Status}
+    M --&gt;|Success| N[Stream Response]
+    M --&gt;|Cancelled| O[Cleanup &amp; Return]
+    M --&gt;|Error| P[Log &amp; Emit Error]
+    N --&gt; Q[Emit Response Message]
+    Q --&gt; R[Update Message History]
+    R --&gt; S[Return to User]
+</pre>
+<h3 id="1-input-processing">1. Input Processing</h3>
+<ul>
+<li><strong>What</strong>: User types a task or prompt</li>
+<li><strong>Where</strong>: <code>code_puppy/cli_runner.py:interactive_mode()</code></li>
+<li><strong>Failure mode</strong>: Invalid input is passed through; empty prompts after attachment removal trigger a warning</li>
+</ul>
+<h3 id="2-shell-passthrough-check">2. Shell Passthrough Check</h3>
+<ul>
+<li><strong>What</strong>: Detect if input starts with <code>!</code> for direct shell execution</li>
+<li><strong>Where</strong>: <code>code_puppy/command_line/shell_passthrough.py</code></li>
+<li><strong>Failure mode</strong>: N/A - bypasses agent entirely</li>
+</ul>
+<h3 id="3-attachment-parsing">3. Attachment Parsing</h3>
+<ul>
+<li><strong>What</strong>: Extract file paths, URLs, and clipboard images from the prompt</li>
+<li><strong>Where</strong>: <code>code_puppy/command_line/attachments.py:parse_prompt_attachments()</code></li>
+<li><strong>Failure mode</strong>: Invalid file paths generate warnings but don't block execution</li>
+</ul>
+<h3 id="4-clipboard-image-retrieval">4. Clipboard Image Retrieval</h3>
+<ul>
+<li><strong>What</strong>: Get pending clipboard images and clear the pending queue</li>
+<li><strong>Where</strong>: <code>code_puppy/command_line/clipboard.py:get_clipboard_manager()</code></li>
+<li><strong>Failure mode</strong>: No clipboard images - continues with text only</li>
+</ul>
+<h3 id="5-agent-task-creation">5. Agent Task Creation</h3>
+<ul>
+<li><strong>What</strong>: Create an async task for the agent to run</li>
+<li><strong>Where</strong>: <code>code_puppy/cli_runner.py:run_prompt_with_attachments()</code></li>
+<li><strong>Failure mode</strong>: Task creation fails if agent is in invalid state</li>
+</ul>
+<h3 id="6-agent-run-start-hook">6. Agent Run Start Hook</h3>
+<ul>
+<li><strong>What</strong>: Fire <code>agent_run_start</code> callback for plugins</li>
+<li><strong>Where</strong>: <code>code_puppy/agents/base_agent.py:run_with_mcp()</code></li>
+<li><strong>Failure mode</strong>: Hook failures are caught and logged - don't block agent execution</li>
+</ul>
+<h3 id="7-agent-execution-with-mcp">7. Agent Execution with MCP</h3>
+<ul>
+<li><strong>What</strong>: Run the pydantic-ai agent with MCP tools, attachments, and usage limits</li>
+<li><strong>Where</strong>: <code>code_puppy/agents/base_agent.py:run_with_mcp()</code></li>
+<li><strong>Failure mode</strong>:</li>
+<li><code>UsageLimitExceeded</code> - user can ask to continue</li>
+<li><code>McpError</code> - malfunctioning MCP server</li>
+<li><code>CancelledError</code> - user cancelled via Ctrl+K/Ctrl+C</li>
+</ul>
+<h3 id="8-response-streaming">8. Response Streaming</h3>
+<ul>
+<li><strong>What</strong>: Stream the agent's response through the event handler</li>
+<li><strong>Where</strong>: <code>code_puppy/agents/event_stream_handler.py</code></li>
+<li><strong>Failure mode</strong>: Stream errors are logged but don't crash the agent</li>
+</ul>
+<h3 id="9-message-history-update">9. Message History Update</h3>
+<ul>
+<li><strong>What</strong>: Update the agent's message history with the complete conversation</li>
+<li><strong>Where</strong>: <code>code_puppy/cli_runner.py:interactive_mode()</code></li>
+<li><strong>Failure mode</strong>: History corruption could affect future turns</li>
+</ul>
+<h2 id="data-transformations">Data Transformations</h2>
+<table>
+<thead><tr>
+<th>Stage</th>
+<th>Input</th>
+<th>Output</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Attachment parsing</td>
+<td>Raw prompt string</td>
+<td><code>ParsedPrompt</code> object</td>
+<td><code>attachments.py</code></td>
+</tr>
+<tr>
+<td>Prompt building</td>
+<td>Text + attachments</td>
+<td>`prompt_payload: str \</td>
+<td>List[Any]`</td>
+<td><code>base_agent.py:run_with_mcp()</code></td>
+</tr>
+<tr>
+<td>Agent run</td>
+<td><code>prompt_payload</code> + message history</td>
+<td><code>RunResult</code></td>
+<td><code>pydantic-ai.Agent.run()</code></td>
+</tr>
+<tr>
+<td>Response emission</td>
+<td><code>RunResult</code></td>
+<td><code>AgentResponseMessage</code></td>
+<td><code>cli_runner.py</code></td>
+</tr>
+</tbody></table>
+<h2 id="failure-handling">Failure Handling</h2>
+<table>
+<thead><tr>
+<th>Failure Point</th>
+<th>Detection</th>
+<th>Recovery</th>
+<th>Alert?</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Invalid attachment</td>
+<td>Warning emitted</td>
+<td>Continue without it</td>
+<td>Yes (warning)</td>
+</tr>
+<tr>
+<td>Usage limit reached</td>
+<td><code>UsageLimitExceeded</code> exception</td>
+<td>User can ask to continue</td>
+<td>Yes (info)</td>
+</tr>
+<tr>
+<td>MCP server error</td>
+<td><code>McpError</code> exception</td>
+<td>Disable MCP server</td>
+<td>Yes (info)</td>
+</tr>
+<tr>
+<td>User cancellation</td>
+<td><code>CancelledError</code> exception</td>
+<td>Clean shutdown</td>
+<td>Yes (info)</td>
+</tr>
+<tr>
+<td>Unexpected error</td>
+<td>Exception group</td>
+<td>Log to file</td>
+<td>Yes (error)</td>
+</tr>
+</tbody></table>
+<h2 id="performance-characteristics">Performance Characteristics</h2>
+<ul>
+<li><strong>Typical duration</strong>: 5-60 seconds for simple tasks, minutes for complex code generation</li>
+<li><strong>Bottlenecks</strong>: LLM response time, tool call execution (file I/O, shell commands)</li>
+<li><strong>Scaling considerations</strong>: Concurrent subagent tasks can multiply resource usage</li>
+</ul>
+<h2 id="debugging-this-flow">Debugging This Flow</h2>
+<h3 id="key-log-messages">Key Log Messages</h3>
+<table>
+<thead><tr>
+<th>Message</th>
+<th>Meaning</th>
+<th>Action</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>Attachments detected -&gt; files: N, clipboard images: N</code></td>
+<td>Prompt has attachments</td>
+<td>Verify paths are correct</td>
+</tr>
+<tr>
+<td><code>🔄 Attempting delayed compaction</code></td>
+<td>Token limit approaching</td>
+<td>Check context size settings</td>
+</tr>
+<tr>
+<td><code>Usage limit exceeded</code></td>
+<td>Request limit reached</td>
+<td>Ask agent to continue</td>
+</tr>
+<tr>
+<td><code>Agent task cancelled</code></td>
+<td>User pressed Ctrl+K</td>
+<td>Normal cancellation</td>
+</tr>
+</tbody></table>
+<h3 id="common-issues">Common Issues</h3>
+<table>
+<thead><tr>
+<th>Symptom</th>
+<th>Likely Cause</th>
+<th>Fix</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Prompt appears empty</td>
+<td>All text was attachment paths</td>
+<td>Add instructions before paths</td>
+</tr>
+<tr>
+<td>Agent doesn't respond</td>
+<td>MCP server blocking</td>
+<td>Check MCP status with <code>/mcp status</code></td>
+</tr>
+<tr>
+<td>Terminal becomes unresponsive</td>
+<td>Long-running shell command</td>
+<td>Press Ctrl+X to cancel command</td>
+</tr>
+<tr>
+<td>Response not streaming</td>
+<td>Console conflict</td>
+<td>Check for other Live displays</td>
+</tr>
+</tbody></table>
+<h2 id="cancellation-flow">Cancellation Flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant CLI
+    participant Agent
+    participant Subagents
+    participant Shell
+    
+    User-&gt;&gt;CLI: Press Ctrl+K
+    CLI-&gt;&gt;Agent: Cancel task
+    alt Shell running
+        Agent-&gt;&gt;CLI: Warn about running command
+        CLI-&gt;&gt;User: Show warning
+    else No shell
+        Agent-&gt;&gt;Subagents: Cancel all
+        Agent-&gt;&gt;Agent: Cancel task
+        Agent--&gt;&gt;CLI: CancelledError
+        CLI--&gt;&gt;User: Show cancelled message
+    end
+</pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../Features/AgentCreation.html">Feature: Agent Creation</a></li>
+<li><a href="../Features/BrowserControl.html">Feature: Browser Control</a></li>
+<li><a href="../Concepts/ToolRegistration.html">Concept: Tool Registration</a></li>
+<li><a href="../Concepts/SessionManagement.html">Concept: Session Management</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

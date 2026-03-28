@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>View: Skills Menu — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="AgentPicker.html">Agent Picker</a>
+<a href="DiffMenu.html">Diff Menu</a>
+<a href="MCPManager.html">MCPManager</a>
+<a href="MainCLI.html">Main CLI</a>
+<a href="ModelPicker.html">Model Picker</a>
+<a href="ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="OnboardingWizard.html">Onboarding Wizard</a>
+<a href="SkillsMenu.html" class="active">Skills Menu</a>
+<a href="TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="view-skills-menu">View: Skills Menu</h1>
+<h2 id="overview">Overview</h2>
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Route</td>
+<td><code>/skills</code> (slash command)</td>
+</tr>
+<tr>
+<td>Auth Required</td>
+<td>N/A (local CLI)</td>
+</tr>
+<tr>
+<td>Layout</td>
+<td>Split-panel (categories/skills)</td>
+</tr>
+</tbody></table>
+<h2 id="what-does-this-view-do">What Does This View Do?</h2>
+<p>The Skills Menu provides an interactive terminal UI for browsing, installing, and managing agent skills. Skills are reusable code patterns and workflows that extend the agent's capabilities. Users can browse a remote catalog, install skills locally, and manage their skill directories.</p>
+<h2 id="screenshot-wireframe">Screenshot/Wireframe</h2>
+<pre><code>┌────────────────────────────┬──────────────────────────────────────────────┐
+│ 📂 CATEGORIES              │  📊 DATA                                     │
+│                            │                                              │
+│   📊 Data (15)             │  Name: spreadsheet-analyzer                  │
+│ ▶ 📦 Product Management (8)│  Description: Analyze and process spreadsheets
+│   💰 Finance (12)          │  Size: 2.3 KB                                │
+│   🧬 Biology (5)           │  Category: data                              │
+│                            │  Tags: spreadsheet, analysis, data           │
+│                            │                                              │
+│                            │  Status: Not installed                       │
+│                            │                                              │
+│                            │  [Install] (Enter)  [Back] (Esc)             │
+│                            │                                              │
+│  ↑/↓ Navigate  ←/→ Page    │                                              │
+│  Enter  Select             │                                              │
+│  Ctrl+C Cancel             │                                              │
+└────────────────────────────┴──────────────────────────────────────────────┘</code></pre>
+<h2 id="user-actions">User Actions</h2>
+<table>
+<thead><tr>
+<th>Action</th>
+<th>Trigger</th>
+<th>Result</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Navigate up</td>
+<td>↑</td>
+<td>Move selection up</td>
+</tr>
+<tr>
+<td>Navigate down</td>
+<td>↓</td>
+<td>Move selection down</td>
+</tr>
+<tr>
+<td>Previous page</td>
+<td>←</td>
+<td>Go to previous page</td>
+</tr>
+<tr>
+<td>Next page</td>
+<td>→</td>
+<td>Go to next page</td>
+</tr>
+<tr>
+<td>Browse category</td>
+<td>Enter (on category)</td>
+<td>Show skills in category</td>
+</tr>
+<tr>
+<td>Install skill</td>
+<td>Enter (on skill)</td>
+<td>Download and install skill</td>
+</tr>
+<tr>
+<td>Back</td>
+<td>Esc</td>
+<td>Return to categories view</td>
+</tr>
+<tr>
+<td>Cancel</td>
+<td>Ctrl+C</td>
+<td>Exit without changes</td>
+</tr>
+</tbody></table>
+<h2 id="page-structure">Page Structure</h2>
+<pre class="mermaid">
+flowchart TD
+    subgraph CategoriesView["Categories View"]
+        CatList[Category List]
+        CatCount["Skill counts"]
+        CatNav["Navigation Hints"]
+    end
+    
+    subgraph SkillsView["Skills View"]
+        SkillList[Skill List]
+        SkillPreview[Skill Preview]
+    end
+    
+    subgraph Commands["Command Line"]
+        List["/skills list"]
+        Enable["/skills enable"]
+        Disable["/skills disable"]
+        Refresh["/skills refresh"]
+    end
+    
+    CategoriesView --&gt; SkillsView
+    Commands -.-&gt;|Alternative| SkillsView
+</pre>
+<h2 id="components-used">Components Used</h2>
+<table>
+<thead><tr>
+<th>Component</th>
+<th>Purpose</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>FormattedTextControl</code></td>
+<td>Styled text rendering</td>
+<td><code>prompt_toolkit.layout.controls</code></td>
+</tr>
+<tr>
+<td><code>VSplit</code></td>
+<td>Split-panel layout</td>
+<td><code>prompt_toolkit.layout</code></td>
+</tr>
+<tr>
+<td><code>Frame</code></td>
+<td>Panel borders/titles</td>
+<td><code>prompt_toolkit.widgets</code></td>
+</tr>
+<tr>
+<td><code>SkillCatalog</code></td>
+<td>Remote skill catalog</td>
+<td><code>skill_catalog.py</code></td>
+</tr>
+<tr>
+<td><code>download_and_install_skill</code></td>
+<td>Skill installation</td>
+<td><code>downloader.py</code></td>
+</tr>
+</tbody></table>
+<h2 id="state-management">State Management</h2>
+<table>
+<thead><tr>
+<th>State</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>view_mode</code></td>
+<td>str</td>
+<td>Current view (categories/skills)</td>
+</tr>
+<tr>
+<td><code>selected_category_idx</code></td>
+<td>int</td>
+<td>Selected category index</td>
+</tr>
+<tr>
+<td><code>selected_skill_idx</code></td>
+<td>int</td>
+<td>Selected skill index</td>
+</tr>
+<tr>
+<td><code>current_page</code></td>
+<td>int</td>
+<td>Current page number</td>
+</tr>
+<tr>
+<td><code>pending_entry</code></td>
+<td>dict</td>
+<td>Skill pending installation</td>
+</tr>
+</tbody></table>
+<h2 id="data-flow">Data Flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant Menu
+    participant Catalog
+    participant Downloader
+    
+    User-&gt;&gt;Menu: Open skills menu
+    Menu-&gt;&gt;Catalog: Load categories
+    Catalog--&gt;&gt;Menu: Category list
+    Menu-&gt;&gt;User: Display categories
+    User-&gt;&gt;Menu: Select category
+    Menu-&gt;&gt;Catalog: Get skills in category
+    Catalog--&gt;&gt;Menu: Skill list
+    Menu-&gt;&gt;User: Display skills
+    User-&gt;&gt;Menu: Select skill
+    Menu-&gt;&gt;User: Show preview
+    User-&gt;&gt;Menu: Install skill
+    Menu-&gt;&gt;Downloader: Download skill
+    Downloader-&gt;&gt;Downloader: Extract ZIP
+    Downloader-&gt;&gt;FS: Save to ~/.code_puppy/skills/
+    Downloader--&gt;&gt;Menu: Success
+    Menu-&gt;&gt;User: Confirmation
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Aspect</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Entry point</td>
+<td><code>code_puppy/plugins/agent_skills/skills_install_menu.py</code></td>
+<td><code>SkillsInstallMenu</code></td>
+</tr>
+<tr>
+<td>Skill catalog</td>
+<td><code>code_puppy/plugins/agent_skills/skill_catalog.py</code></td>
+<td>Remote catalog</td>
+</tr>
+<tr>
+<td>Skill download</td>
+<td><code>code_puppy/plugins/agent_skills/downloader.py</code></td>
+<td>ZIP download</td>
+</tr>
+<tr>
+<td>Skill install</td>
+<td><code>code_puppy/plugins/agent_skills/installer.py</code></td>
+<td>Installation logic</td>
+</tr>
+<tr>
+<td>Skill directories</td>
+<td><code>code_puppy/plugins/agent_skills/utils.py</code></td>
+<td>Path management</td>
+</tr>
+</tbody></table>
+<h2 id="command-line-interface">Command Line Interface</h2>
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>/skills</code></td>
+<td>Launch interactive menu</td>
+</tr>
+<tr>
+<td><code>/skills list</code></td>
+<td>List all discovered skills</td>
+</tr>
+<tr>
+<td><code>/skills enable &lt;name&gt;</code></td>
+<td>Enable a specific skill</td>
+</tr>
+<tr>
+<td><code>/skills disable &lt;name&gt;</code></td>
+<td>Disable a specific skill</td>
+</tr>
+<tr>
+<td><code>/skills toggle</code></td>
+<td>Toggle skills integration on/off</td>
+</tr>
+<tr>
+<td><code>/skills directories</code></td>
+<td>Manage skill directories</td>
+</tr>
+<tr>
+<td><code>/skills add &lt;path&gt;</code></td>
+<td>Add a skill directory</td>
+</tr>
+<tr>
+<td><code>/skills remove &lt;num&gt;</code></td>
+<td>Remove a skill directory by number</td>
+</tr>
+<tr>
+<td><code>/skills refresh</code></td>
+<td>Refresh skill cache</td>
+</tr>
+<tr>
+<td><code>/skills help</code></td>
+<td>Show help message</td>
+</tr>
+</tbody></table>
+<h2 id="skill-categories">Skill Categories</h2>
+<table>
+<thead><tr>
+<th>Category</th>
+<th>Icon</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Data</td>
+<td>📊</td>
+<td>Data processing and analysis</td>
+</tr>
+<tr>
+<td>Finance</td>
+<td>💰</td>
+<td>Financial calculations and reports</td>
+</tr>
+<tr>
+<td>Legal</td>
+<td>⚖️</td>
+<td>Legal document processing</td>
+</tr>
+<tr>
+<td>Office</td>
+<td>📄</td>
+<td>Office productivity tools</td>
+</tr>
+<tr>
+<td>Product Management</td>
+<td>📦</td>
+<td>Product development workflows</td>
+</tr>
+<tr>
+<td>Sales</td>
+<td>💼</td>
+<td>Sales and CRM tools</td>
+</tr>
+<tr>
+<td>Biology</td>
+<td>🧬</td>
+<td>Biological data analysis</td>
+</tr>
+</tbody></table>
+<h2 id="skill-storage">Skill Storage</h2>
+<table>
+<thead><tr>
+<th>Location</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>~/.code_puppy/skills/</code></td>
+<td>User-level skills (global)</td>
+</tr>
+<tr>
+<td><code>./skills/</code></td>
+<td>Project-level skills (local)</td>
+</tr>
+</tbody></table>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Remote catalog unavailable</strong>: If the remote catalog cannot be loaded, the menu shows an empty state. Skills can still be added manually.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Skill validation</strong>: Installed skills are validated to ensure they have a valid <code>SKILL.md</code> file before being recognized.</p>
+</div>
+<div class="callout callout-tip">
+<div class="callout-title">TIP</div>
+<p><strong>Manual installation</strong>: Skills can be manually placed in <code>~/.code_puppy/skills/</code> and then discovered with <code>/skills refresh</code>.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Skill conflicts</strong>: Installing a skill with the same ID as an existing one will overwrite it.</p>
+</div>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="Features/AgentSkills.html">Feature: Agent Skills</a></li>
+<li><a href="../Flows/InstallingASkill.html">Flow: Installing a Skill</a></li>
+<li><a href="Concepts/SkillArchitecture.html">Concept: Skill Architecture</a></li>
+<li><a href="../Guides/UseSkills.html">Guide: Using Skills</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

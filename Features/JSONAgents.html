@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: JSON Agents — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="AgentCreation.html">Agent Creation</a>
+<a href="AgentSwitching.html">Agent Switching</a>
+<a href="BrowserControl.html">Browser Control</a>
+<a href="CustomSkills.html">Custom Skills</a>
+<a href="HookSystem.html">Hook System</a>
+<a href="JSONAgents.html" class="active">JSONAgents</a>
+<a href="MCPManagement.html">MCPManagement</a>
+<a href="MPCCatalog.html">MPCCatalog</a>
+<a href="ModelConfiguration.html">Model Configuration</a>
+<a href="ModelDiscovery.html">Model Discovery</a>
+<a href="PluginDevelopment.html">Plugin Development</a>
+<a href="PythonAgents.html">Python Agents</a>
+<a href="RoundRobinModels.html">Round Robin Models</a>
+<a href="SkillInstallation.html">Skill Installation</a>
+<a href="SkillUsage.html">Skill Usage</a>
+<a href="TaskScheduling.html">Task Scheduling</a>
+<a href="TerminalIntegration.html">Terminal Integration</a>
+<a href="UniversalConstructor.html">Universal Constructor</a>
+<a href="index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-json-agents">Feature: JSON Agents</h1>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>JSON Agents allow you to define custom AI agents using simple JSON configuration files instead of writing Python code. This enables rapid prototyping, sharing agent configurations, and creating specialized agents without touching the codebase.</p>
+<h2 id="why-does-this-exist">Why Does This Exist?</h2>
+<ul>
+<li><strong>Accessibility</strong>: Non-programmers can create custom agents</li>
+<li><strong>Portability</strong>: JSON configs are easy to share and version control</li>
+<li><strong>Rapid Iteration</strong>: Edit agent behavior without restarting the application</li>
+<li><strong>Specialization</strong>: Create domain-specific agents (e.g., "code-reviewer", "docs-writer")</li>
+</ul>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<ol>
+<li>Create a JSON file in <code>~/.code_puppy/agents/</code> or <code>.code_puppy/agents/</code></li>
+<li>Define agent properties: name, description, system prompt, tools</li>
+<li>The agent appears in the agent picker alongside built-in agents</li>
+<li>Select and use the agent like any other</li>
+</ol>
+<h3 id="system-perspective">System Perspective</h3>
+<pre class="mermaid">
+flowchart TD
+    A[User creates agent.json] --&gt; B[discover_json_agents scans dirs]
+    B --&gt; C{Valid JSON?}
+    C --&gt;|Yes| D[JSONAgent instantiated]
+    C --&gt;|No| E[Skip with warning]
+    D --&gt; F[Register in _AGENT_REGISTRY]
+    F --&gt; G[Agent appears in picker]
+    G --&gt; H[User selects agent]
+    H --&gt; I[JSONAgent loaded from path]
+    I --&gt; J[Tools &amp; prompt configured]
+    J --&gt; K[Agent runs with pydantic-ai]
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Responsibility</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Core class</td>
+<td><code>code_puppy/agents/json_agent.py</code></td>
+<td><code>JSONAgent</code> class</td>
+</tr>
+<tr>
+<td>Discovery</td>
+<td><code>code_puppy/agents/json_agent.py</code></td>
+<td><code>discover_json_agents()</code> function</td>
+</tr>
+<tr>
+<td>Registration</td>
+<td><code>code_puppy/agents/agent_manager.py</code></td>
+<td>Line 283-295</td>
+</tr>
+<tr>
+<td>Instantiation</td>
+<td><code>code_puppy/agents/agent_manager.py</code></td>
+<td>Lines 370, 482, 522</td>
+</tr>
+<tr>
+<td>CLI integration</td>
+<td><code>code_puppy/command_line/config_commands.py</code></td>
+<td>Agent management commands</td>
+</tr>
+<tr>
+<td>Pin completion</td>
+<td><code>code_puppy/command_line/pin_command_completion.py</code></td>
+<td>Auto-complete for pinned agents</td>
+</tr>
+</tbody></table>
+<h2 id="json-schema">JSON Schema</h2>
+<pre><code class="language-json">{
+  "name": "agent-identifier",
+  "display_name": "Friendly Name 🤖",
+  "description": "What this agent does",
+  "system_prompt": "Your system prompt here",
+  "user_prompt": "Optional default user prompt",
+  "tools": ["tool1", "tool2"],
+  "tools_config": {},
+  "model": "optional-pinned-model"
+}</code></pre>
+<h3 id="required-fields">Required Fields</h3>
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>string</td>
+<td>Unique agent identifier (lowercase, hyphens)</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string</td>
+<td>Brief description shown in agent picker</td>
+</tr>
+<tr>
+<td><code>system_prompt</code></td>
+<td>string \</td>
+<td>list</td>
+<td>Agent's system instruction</td>
+</tr>
+<tr>
+<td><code>tools</code></td>
+<td>list</td>
+<td>List of tool names the agent can use</td>
+</tr>
+</tbody></table>
+<h3 id="optional-fields">Optional Fields</h3>
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>display_name</code></td>
+<td>string</td>
+<td>Human-readable name with emoji</td>
+</tr>
+<tr>
+<td><code>user_prompt</code></td>
+<td>string</td>
+<td>Default user prompt for tasks</td>
+</tr>
+<tr>
+<td><code>tools_config</code></td>
+<td>object</td>
+<td>Tool-specific configuration</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>string</td>
+<td>Pin this agent to a specific model</td>
+</tr>
+</tbody></table>
+<h2 id="tool-configuration">Tool Configuration</h2>
+<h3 id="built-in-tools">Built-in Tools</h3>
+<pre><code class="language-json">{
+  "tools": [
+    "read_file",
+    "edit_file",
+    "command_runner",
+    "browser_control"
+  ]
+}</code></pre>
+<h3 id="universal-constructor-uc-tools">Universal Constructor (UC) Tools</h3>
+<p>UC tools are identified by prefixing with <code>uc:</code>:</p>
+<pre><code class="language-json">{
+  "tools": [
+    "read_file",
+    "uc:my-custom-tool"
+  ]
+}</code></pre>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p>The system automatically detects UC tools and marks them with <code>uc:</code> prefix internally.</p>
+</div>
+<h2 id="configuration-examples">Configuration Examples</h2>
+<h3 id="simple-code-reviewer">Simple Code Reviewer</h3>
+<pre><code class="language-json">{
+  "name": "code-reviewer",
+  "display_name": "Code Reviewer 👀",
+  "description": "Reviews code for bugs and style issues",
+  "system_prompt": "You are an expert code reviewer. Focus on:\n1. Bug detection\n2. Code style\n3. Security issues\n4. Performance",
+  "tools": ["read_file", "command_runner"],
+  "model": "claude-3-5-sonnet"
+}</code></pre>
+<h3 id="multi-prompt-agent">Multi-Prompt Agent</h3>
+<pre><code class="language-json">{
+  "name": "docs-writer",
+  "display_name": "Documentation Writer 📝",
+  "description": "Writes and updates documentation",
+  "system_prompt": [
+    "You are a technical writer specializing in documentation.",
+    "Your goal is to create clear, comprehensive docs.",
+    "Always follow the project's style guide."
+  ],
+  "user_prompt": "Please write documentation for the following feature:",
+  "tools": ["read_file", "edit_file", "command_runner"]
+}</code></pre>
+<h2 id="discovery-locations">Discovery Locations</h2>
+<p>Agents are discovered in two directories (in priority order):</p>
+<table>
+<thead><tr>
+<th>Priority</th>
+<th>Location</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>.code_puppy/agents/</code></td>
+<td>Project-specific agents</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>~/.code_puppy/agents/</code></td>
+<td>User-wide agents</td>
+</tr>
+</tbody></table>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p>Project agents take precedence over user agents when names collide.</p>
+</div>
+<h2 id="agent-lifecycle">Agent Lifecycle</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant CLI
+    participant AgentMgr
+    participant JSONAgent
+    participant Registry
+
+    User-&gt;&gt;CLI: /agent list
+    CLI-&gt;&gt;AgentMgr: get_available_agents()
+    AgentMgr-&gt;&gt;AgentMgr: discover_json_agents()
+    AgentMgr-&gt;&gt;JSONAgent: Load each .json file
+    JSONAgent--&gt;&gt;AgentMgr: Validated config
+    AgentMgr-&gt;&gt;Registry: Register agent path
+    Registry--&gt;&gt;CLI: Agent list
+    CLI--&gt;&gt;User: Display agents
+
+    User-&gt;&gt;CLI: /agent switch my-agent
+    CLI-&gt;&gt;AgentMgr: get_agent_by_name("my-agent")
+    AgentMgr-&gt;&gt;JSONAgent: JSONAgent(path)
+    JSONAgent--&gt;&gt;AgentMgr: Instantiated agent
+    AgentMgr--&gt;&gt;CLI: Agent instance
+    CLI--&gt;&gt;User: Switched to my-agent
+</pre>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Name Collisions</strong>: If a Python agent and JSON agent share the same name, the Python agent takes precedence.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Hot Reloading</strong>: JSON agents support <code>refresh_config()</code> - changes to JSON files are picked up without restart when using <code>/config reload-agent</code>.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Invalid JSON</strong>: Malformed JSON files are silently skipped with a debug log entry.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead><tr>
+<th>Scenario</th>
+<th>Behavior</th>
+<th>User Sees</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Missing required field</td>
+<td>Agent skipped during discovery</td>
+<td>Warning in agent list</td>
+</tr>
+<tr>
+<td>Invalid JSON syntax</td>
+<td>Agent skipped</td>
+<td>Warning in agent list</td>
+</tr>
+<tr>
+<td>Unknown tool in config</td>
+<td>Tool filtered out</td>
+<td>Agent loads without that tool</td>
+</tr>
+<tr>
+<td>File not found</td>
+<td>Agent skipped</td>
+<td>Warning in agent list</td>
+</tr>
+</tbody></table>
+<h2 id="testing-this-feature">Testing This Feature</h2>
+<h3 id="create-a-test-agent">Create a Test Agent</h3>
+<pre><code class="language-bash">mkdir -p ~/.code_puppy/agents
+cat &gt; ~/.code_puppy/agents/test-agent.json &lt;&lt; 'EOF'
+{
+  "name": "test-agent",
+  "display_name": "Test Agent 🧪",
+  "description": "A test agent for verification",
+  "system_prompt": "You are a test agent.",
+  "tools": ["command_runner"]
+}
+EOF</code></pre>
+<h3 id="verify-discovery">Verify Discovery</h3>
+<pre><code class="language-bash"># Run code_puppy and check agent list
+# Or use the API:
+curl http://localhost:8000/api/agents</code></pre>
+<h3 id="test-hot-reload">Test Hot Reload</h3>
+<pre><code class="language-bash"># Edit the JSON file
+# Then in code_puppy:
+/config reload-agent test-agent</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="AgentCreation.html">Feature: Agent Creation</a></li>
+<li><a href="AgentSwitching.html">Feature: Agent Switching</a></li>
+<li><a href="../Concepts/AgentArchitecture.html">Concept: Agent Architecture</a></li>
+<li><a href="../Flows/AgentExecution.html">Flow: Agent Execution</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

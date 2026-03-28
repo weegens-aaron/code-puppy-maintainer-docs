@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code Puppy Documentation — Code Puppy Internals</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="Architecture.html">Architecture</a>
+<a href="Troubleshooting.html">Troubleshooting</a>
+<a href="index.html" class="active">index</a>
+<div class="nav-section">Concepts</div>
+<a href="Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="Concepts/CallbackSystem.html">Callback System</a>
+<a href="Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="Endpoints/DeleteSession.html">Delete Session</a>
+<a href="Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="Endpoints/GetCommand.html">Get Command</a>
+<a href="Endpoints/GetConfig.html">Get Config</a>
+<a href="Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="Endpoints/GetSession.html">Get Session</a>
+<a href="Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="Endpoints/ListAgents.html">List Agents</a>
+<a href="Endpoints/ListCommands.html">List Commands</a>
+<a href="Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="Endpoints/ListSessions.html">List Sessions</a>
+<a href="Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="Features/AgentCreation.html">Agent Creation</a>
+<a href="Features/AgentSwitching.html">Agent Switching</a>
+<a href="Features/BrowserControl.html">Browser Control</a>
+<a href="Features/CustomSkills.html">Custom Skills</a>
+<a href="Features/HookSystem.html">Hook System</a>
+<a href="Features/JSONAgents.html">JSONAgents</a>
+<a href="Features/MCPManagement.html">MCPManagement</a>
+<a href="Features/MPCCatalog.html">MPCCatalog</a>
+<a href="Features/ModelConfiguration.html">Model Configuration</a>
+<a href="Features/ModelDiscovery.html">Model Discovery</a>
+<a href="Features/PluginDevelopment.html">Plugin Development</a>
+<a href="Features/PythonAgents.html">Python Agents</a>
+<a href="Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="Features/SkillInstallation.html">Skill Installation</a>
+<a href="Features/SkillUsage.html">Skill Usage</a>
+<a href="Features/TaskScheduling.html">Task Scheduling</a>
+<a href="Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="Flows/AddingAModel.html">Adding AModel</a>
+<a href="Flows/AgentExecution.html">Agent Execution</a>
+<a href="Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="Flows/PluginLoading.html">Plugin Loading</a>
+<a href="Flows/RunningATask.html">Running ATask</a>
+<a href="Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="Views/AgentPicker.html">Agent Picker</a>
+<a href="Views/DiffMenu.html">Diff Menu</a>
+<a href="Views/MCPManager.html">MCPManager</a>
+<a href="Views/MainCLI.html">Main CLI</a>
+<a href="Views/ModelPicker.html">Model Picker</a>
+<a href="Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="Views/SkillsMenu.html">Skills Menu</a>
+<a href="Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="code-puppy-documentation">Code Puppy Documentation</h1>
+<h2 id="start-here">Start Here</h2>
+<p><strong>New to this codebase?</strong> Read these first:</p>
+<ol>
+<li><a href="Architecture.html">System Overview</a> - What is this and how does it work?</li>
+<li><a href="#quick-start">Quick Start</a> - Get it running locally</li>
+<li><a href="Features/index.html">Key Features</a> - What can it do?</li>
+</ol>
+<h2 id="quick-start">Quick Start</h2>
+<pre><code class="language-bash"># Run interactively
+uvx code-puppy -i
+
+# Run non-interactively
+uvx code-puppy "fix the bug in my code"
+
+# Run tests
+pytest tests/ -v
+
+# View logs
+~/.code_puppy/logs/</code></pre>
+<h2 id="documentation-map">Documentation Map</h2>
+<table>
+<thead><tr>
+<th>Section</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><a href="Architecture.html">Architecture</a></td>
+<td>System overview, tech stack, high-level design</td>
+</tr>
+<tr>
+<td><a href="Features/index.html">Features</a></td>
+<td>What the system does - user-facing capabilities</td>
+</tr>
+<tr>
+<td><a href="Flows/index.html">Flows</a></td>
+<td>How things work - step-by-step processes</td>
+</tr>
+<tr>
+<td><a href="Concepts/index.html">Concepts</a></td>
+<td>Patterns, conventions, cross-cutting concerns</td>
+</tr>
+<tr>
+<td><a href="Endpoints/index.html">Endpoints</a></td>
+<td>REST API reference</td>
+</tr>
+<tr>
+<td><a href="Views/index.html">Views</a></td>
+<td>UI components and menus</td>
+</tr>
+<tr>
+<td><a href="Troubleshooting.html">Troubleshooting</a></td>
+<td>Common issues and how to fix them</td>
+</tr>
+</tbody></table>
+<h2 id="key-questions-answered">Key Questions Answered</h2>
+<table>
+<thead><tr>
+<th>Question</th>
+<th>Answer</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>How does agent switching work?</td>
+<td><a href="Flows/AgentExecution.html">Flow: Agent Execution</a></td>
+</tr>
+<tr>
+<td>How do I add a new agent?</td>
+<td><a href="Features/AgentCreation.html">Feature: Agent Creation</a></td>
+</tr>
+<tr>
+<td>How do plugins extend the system?</td>
+<td><a href="Concepts/CallbackSystem.html">Concept: Callback System</a></td>
+</tr>
+<tr>
+<td>How do tools get registered?</td>
+<td><a href="Concepts/ToolRegistration.html">Concept: Tool Registration</a></td>
+</tr>
+<tr>
+<td>Something broke!</td>
+<td><a href="Troubleshooting.html">Troubleshooting</a></td>
+</tr>
+</tbody></table>
+<h2 id="maintainer-notes">Maintainer Notes</h2>
+<p>This documentation focuses on <strong>features and flows</strong> rather than file-by-file inventories. When adding new documentation:</p>
+<ol>
+<li><strong>Start with the user perspective</strong> - What does the user see/do?</li>
+<li><strong>Then explain the system</strong> - What happens under the hood?</li>
+<li><strong>Map to implementation</strong> - Where is this code located?</li>
+<li><strong>Include diagrams</strong> - Use Mermaid for flows and relationships</li>
+<li><strong>Link everything</strong> - All references should be navigable links</li>
+</ol>
+<h2 id="documentation-status">Documentation Status</h2>
+<p>See <a href="_Manifest.html">_Manifest</a> for tracking progress.</p>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

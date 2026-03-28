@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature: Python Agents — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="../Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="../Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="../Endpoints/DeleteSession.html">Delete Session</a>
+<a href="../Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="../Endpoints/GetCommand.html">Get Command</a>
+<a href="../Endpoints/GetConfig.html">Get Config</a>
+<a href="../Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="../Endpoints/GetSession.html">Get Session</a>
+<a href="../Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="../Endpoints/ListAgents.html">List Agents</a>
+<a href="../Endpoints/ListCommands.html">List Commands</a>
+<a href="../Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="../Endpoints/ListSessions.html">List Sessions</a>
+<a href="../Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="../Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="AgentCreation.html">Agent Creation</a>
+<a href="AgentSwitching.html">Agent Switching</a>
+<a href="BrowserControl.html">Browser Control</a>
+<a href="CustomSkills.html">Custom Skills</a>
+<a href="HookSystem.html">Hook System</a>
+<a href="JSONAgents.html">JSONAgents</a>
+<a href="MCPManagement.html">MCPManagement</a>
+<a href="MPCCatalog.html">MPCCatalog</a>
+<a href="ModelConfiguration.html">Model Configuration</a>
+<a href="ModelDiscovery.html">Model Discovery</a>
+<a href="PluginDevelopment.html">Plugin Development</a>
+<a href="PythonAgents.html" class="active">Python Agents</a>
+<a href="RoundRobinModels.html">Round Robin Models</a>
+<a href="SkillInstallation.html">Skill Installation</a>
+<a href="SkillUsage.html">Skill Usage</a>
+<a href="TaskScheduling.html">Task Scheduling</a>
+<a href="TerminalIntegration.html">Terminal Integration</a>
+<a href="UniversalConstructor.html">Universal Constructor</a>
+<a href="index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="feature-python-agents">Feature: Python Agents</h1>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Python Agents are specialized AI agents with deep expertise in Python development, code review, and modern Python best practices. They provide domain-specific intelligence for Python projects, understanding everything from type hints and async patterns to data science workflows and web framework idioms.</p>
+<h2 id="why-does-this-exist">Why Does This Exist?</h2>
+<p>While general-purpose agents can handle many tasks, Python-specific agents bring focused expertise:</p>
+<ul>
+<li><strong>Pythonic Code Quality</strong>: They enforce PEP 8, PEP 20, and modern Python idioms</li>
+<li><strong>Type Safety</strong>: They demand complete type annotations and mypy compliance</li>
+<li><strong>Async Mastery</strong>: They understand asyncio patterns and concurrency best practices</li>
+<li><strong>Ecosystem Knowledge</strong>: They know the Python ecosystem (FastAPI, Django, Pandas, NumPy, etc.)</li>
+<li><strong>Tooling Integration</strong>: They leverage Python-specific tools (pytest, ruff, black, bandit)</li>
+</ul>
+<h2 id="how-it-works">How It Works</h2>
+<h3 id="user-perspective">User Perspective</h3>
+<ol>
+<li>User selects a Python agent from the agent menu (<code>/agent</code>)</li>
+<li>Agent introduces itself with Python-specific personality</li>
+<li>User provides Python-related tasks (code generation, review, debugging)</li>
+<li>Agent applies Python expertise to solve problems</li>
+<li>Agent validates work using Python tooling (mypy, pytest, ruff)</li>
+</ol>
+<h3 id="system-perspective">System Perspective</h3>
+<pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant CLI
+    participant AgentManager
+    participant PythonAgent
+    participant BaseAgent
+    participant Tools
+    participant FileSystem
+
+    User-&gt;&gt;CLI: Select python-programmer or python-reviewer
+    CLI-&gt;&gt;AgentManager: Load agent by name
+    AgentManager-&gt;&gt;AgentManager: Import agent class
+    AgentManager-&gt;&gt;PythonAgent: Instantiate agent
+    PythonAgent-&gt;&gt;BaseAgent: Initialize with tools &amp; prompt
+    PythonAgent--&gt;&gt;AgentManager: Ready agent instance
+    AgentManager--&gt;&gt;CLI: Agent loaded
+    CLI--&gt;&gt;User: Agent ready message
+    User-&gt;&gt;PythonAgent: Provide Python task
+    PythonAgent-&gt;&gt;Tools: Use file read/write tools
+    Tools--&gt;&gt;PythonAgent: File contents
+    PythonAgent-&gt;&gt;PythonAgent: Apply Python expertise
+    PythonAgent-&gt;&gt;Tools: Run validation tools (mypy, pytest)
+    Tools--&gt;&gt;PythonAgent: Validation results
+    PythonAgent-&gt;&gt;FileSystem: Write results
+    FileSystem--&gt;&gt;PythonAgent: Success
+    PythonAgent--&gt;&gt;User: Pythonic solution
+</pre>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Responsibility</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Python Programmer Agent</td>
+<td><code>code_puppy/agents/agent_python_programmer.py</code></td>
+<td>Code generation specialist</td>
+</tr>
+<tr>
+<td>Python Reviewer Agent</td>
+<td><code>code_puppy/agents/agent_python_reviewer.py</code></td>
+<td>Code review specialist</td>
+</tr>
+<tr>
+<td>Base Agent Class</td>
+<td><code>code_puppy/agents/base_agent.py</code></td>
+<td>Core agent functionality (87KB)</td>
+</tr>
+<tr>
+<td>Agent Manager</td>
+<td><code>code_puppy/agents/agent_manager.py</code></td>
+<td>Agent loading &amp; switching</td>
+</tr>
+<tr>
+<td>Agent Discovery</td>
+<td><code>code_puppy/agents/__init__.py</code></td>
+<td>Auto-discovery of agents</td>
+</tr>
+<tr>
+<td>JSON Agent Support</td>
+<td><code>code_puppy/agents/json_agent.py</code></td>
+<td>JSON config parsing</td>
+</tr>
+</tbody></table>
+<h2 id="available-python-agents">Available Python Agents</h2>
+<h3 id="python-programmer">Python Programmer 🐍</h3>
+<ul>
+<li><strong>Name</strong>: <code>python-programmer</code></li>
+<li><strong>Focus</strong>: Modern Python development with async, data science, web frameworks</li>
+<li><strong>Tools</strong>: Full development toolkit (file ops, shell commands, validation tools)</li>
+<li><strong>Expertise</strong>: Type hints, async/await, data science, web frameworks, testing</li>
+</ul>
+<h3 id="python-reviewer">Python Reviewer 🐍</h3>
+<ul>
+<li><strong>Name</strong>: <code>python-reviewer</code></li>
+<li><strong>Focus</strong>: Relentless code review with idiomatic and quality-first guidance</li>
+<li><strong>Tools</strong>: Read-only introspection plus agent collaboration</li>
+<li><strong>Expertise</strong>: PEP compliance, type safety, async discipline, security, performance</li>
+</ul>
+<h2 id="configuration">Configuration</h2>
+<table>
+<thead><tr>
+<th>Setting</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>global_model_name</code></td>
+<td>Model used by Python agents (if not pinned)</td>
+<td>Configurable</td>
+</tr>
+<tr>
+<td><code>agent_pinned_models</code></td>
+<td>Per-agent model overrides</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>use_dbos</code></td>
+<td>Enable durable execution for agents</td>
+<td><code>false</code></td>
+</tr>
+</tbody></table>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-warning">
+<div class="callout-title">WARNING</div>
+<p><strong>Python agents are hardcoded classes</strong> - Unlike JSON agents, Python agents are defined as Python classes in <code>code_puppy/agents/</code>. To create a new Python agent, you must add a new class file and register it.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Python agents have specialized prompts</strong> - Each Python agent has a carefully crafted system prompt (~1500 tokens) that defines their expertise and personality. These prompts are much more detailed than generic agent prompts.</p>
+</div>
+<div class="callout callout-tip">
+<div class="callout-title">TIP</div>
+<p><strong>Use python-reviewer for PRs</strong> - The python-reviewer agent is specifically designed for pull request reviews. It focuses on meaningful diffs and provides actionable feedback with exact line references.</p>
+</div>
+<div class="callout callout-caution">
+<div class="callout-title">CAUTION</div>
+<p><strong>Python programmer writes code</strong> - The python-programmer agent will create and modify files. Always review changes before committing, especially for complex refactors.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead><tr>
+<th>Scenario</th>
+<th>Behavior</th>
+<th>User Sees</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Agent not found</td>
+<td>AgentManager raises KeyError</td>
+<td>"Agent 'name' not found"</td>
+</tr>
+<tr>
+<td>Model unavailable</td>
+<td>ModelFactory falls back to global</td>
+<td>Warning about model fallback</td>
+</tr>
+<tr>
+<td>Tool execution fails</td>
+<td>Agent continues with error handling</td>
+<td>Error message in response</td>
+</tr>
+<tr>
+<td>Type checking fails</td>
+<td>Agent suggests fixes</td>
+<td>mypy error output with recommendations</td>
+</tr>
+</tbody></table>
+<h2 id="python-specific-workflows">Python-Specific Workflows</h2>
+<h3 id="code-generation-workflow">Code Generation Workflow</h3>
+<ol>
+<li>User describes Python feature or function</li>
+<li>Agent analyzes existing codebase patterns</li>
+<li>Agent writes type-annotated, PEP 8 compliant code</li>
+<li>Agent runs mypy and ruff for validation</li>
+<li>Agent creates file with proper docstrings</li>
+<li>Agent suggests tests</li>
+</ol>
+<h3 id="code-review-workflow">Code Review Workflow</h3>
+<ol>
+<li>User invokes python-reviewer with code changes</li>
+<li>Agent reads modified files</li>
+<li>Agent checks for issues by severity (blockers → warnings → nits)</li>
+<li>Agent provides exact line references</li>
+<li>Agent groups related issues</li>
+<li>Agent gives final verdict (Ship it / Needs fixes / Mixed bag)</li>
+</ol>
+<h2 id="testing-this-feature">Testing This Feature</h2>
+<h3 id="test-python-programmer">Test Python Programmer</h3>
+<pre><code class="language-bash"># Start Code Puppy
+uv run code_puppy
+
+# Switch to Python Programmer
+/agent python-programmer
+
+# Ask for Python code
+Write an async context manager with retry logic</code></pre>
+<h3 id="test-python-reviewer">Test Python Reviewer</h3>
+<pre><code class="language-bash"># Switch to Python Reviewer
+/agent python-reviewer
+
+# Review code changes
+Review the changes in path/to/file.py</code></pre>
+<h3 id="validation-commands">Validation Commands</h3>
+<pre><code class="language-bash"># Check type safety
+mypy . --strict
+
+# Check formatting
+ruff check .
+
+# Run tests
+pytest --cov</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="AgentCreation.html">Feature: Agent Creation</a></li>
+<li><a href="AgentSwitching.html">Feature: Agent Switching</a></li>
+<li><a href="JSONAgents.html">Feature: JSON Agents</a></li>
+<li><a href="../Flows/AgentExecution.html">Flow: Agent Execution</a></li>
+<li><a href="../Concepts/AgentArchitecture.html">Concept: Agent Architecture</a></li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

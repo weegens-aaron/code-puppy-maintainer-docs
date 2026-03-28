@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Overview — Code Puppy Internals</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="Architecture.html" class="active">Architecture</a>
+<a href="Troubleshooting.html">Troubleshooting</a>
+<a href="index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="Concepts/CallbackSystem.html">Callback System</a>
+<a href="Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="Endpoints/CommandAutocomplete.html">Command Autocomplete</a>
+<a href="Endpoints/DeleteConfigKey.html">Delete Config Key</a>
+<a href="Endpoints/DeleteSession.html">Delete Session</a>
+<a href="Endpoints/ExecuteCommand.html">Execute Command</a>
+<a href="Endpoints/GetCommand.html">Get Command</a>
+<a href="Endpoints/GetConfig.html">Get Config</a>
+<a href="Endpoints/GetConfigKey.html">Get Config Key</a>
+<a href="Endpoints/GetSession.html">Get Session</a>
+<a href="Endpoints/GetSessionMessages.html">Get Session Messages</a>
+<a href="Endpoints/ListAgents.html">List Agents</a>
+<a href="Endpoints/ListCommands.html">List Commands</a>
+<a href="Endpoints/ListConfigKeys.html">List Config Keys</a>
+<a href="Endpoints/ListSessions.html">List Sessions</a>
+<a href="Endpoints/SetConfigKey.html">Set Config Key</a>
+<a href="Endpoints/index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="Features/AgentCreation.html">Agent Creation</a>
+<a href="Features/AgentSwitching.html">Agent Switching</a>
+<a href="Features/BrowserControl.html">Browser Control</a>
+<a href="Features/CustomSkills.html">Custom Skills</a>
+<a href="Features/HookSystem.html">Hook System</a>
+<a href="Features/JSONAgents.html">JSONAgents</a>
+<a href="Features/MCPManagement.html">MCPManagement</a>
+<a href="Features/MPCCatalog.html">MPCCatalog</a>
+<a href="Features/ModelConfiguration.html">Model Configuration</a>
+<a href="Features/ModelDiscovery.html">Model Discovery</a>
+<a href="Features/PluginDevelopment.html">Plugin Development</a>
+<a href="Features/PythonAgents.html">Python Agents</a>
+<a href="Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="Features/SkillInstallation.html">Skill Installation</a>
+<a href="Features/SkillUsage.html">Skill Usage</a>
+<a href="Features/TaskScheduling.html">Task Scheduling</a>
+<a href="Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="Flows/AddingAModel.html">Adding AModel</a>
+<a href="Flows/AgentExecution.html">Agent Execution</a>
+<a href="Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="Flows/PluginLoading.html">Plugin Loading</a>
+<a href="Flows/RunningATask.html">Running ATask</a>
+<a href="Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="Views/AgentPicker.html">Agent Picker</a>
+<a href="Views/DiffMenu.html">Diff Menu</a>
+<a href="Views/MCPManager.html">MCPManager</a>
+<a href="Views/MainCLI.html">Main CLI</a>
+<a href="Views/ModelPicker.html">Model Picker</a>
+<a href="Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="Views/SkillsMenu.html">Skills Menu</a>
+<a href="Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="system-overview">System Overview</h1>
+<h2 id="what-is-this">What Is This?</h2>
+<p>Code Puppy is an AI-powered code generation agent that provides a terminal-based interactive interface for working with multiple AI models. It enables users to create custom agents, manage MCP servers, install skills, and execute complex coding tasks through a sassy, personality-driven CLI experience. Unlike expensive IDEs, Code Puppy runs locally and supports 65+ AI providers with full privacy control.</p>
+<h2 id="quick-start-for-maintainers">Quick Start for Maintainers</h2>
+<pre><code class="language-bash"># Run interactively
+uvx code-puppy -i
+
+# Run non-interactively
+uvx code-puppy "fix the bug in my code"
+
+# Run tests
+pytest tests/ -v
+
+# Check logs
+~/.code_puppy/logs/</code></pre>
+<h2 id="technology-stack">Technology Stack</h2>
+<table>
+<thead><tr>
+<th>Category</th>
+<th>Technology</th>
+<th>Why This Choice</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Runtime</td>
+<td>Python 3.11+</td>
+<td>Modern async support, rich ecosystem</td>
+</tr>
+<tr>
+<td>CLI Framework</td>
+<td>prompt_toolkit</td>
+<td>Rich terminal UI with completions</td>
+</tr>
+<tr>
+<td>AI Framework</td>
+<td>Pydantic AI</td>
+<td>Type-safe tool calling, streaming</td>
+</tr>
+<tr>
+<td>HTTP Server</td>
+<td>FastAPI</td>
+<td>Async REST API for integrations</td>
+</tr>
+<tr>
+<td>Model Support</td>
+<td>65+ providers</td>
+<td>Flexibility, cost optimization</td>
+</tr>
+<tr>
+<td>Extension System</td>
+<td>Plugin callbacks</td>
+<td>Clean separation, no core edits</td>
+</tr>
+<tr>
+<td>MCP Integration</td>
+<td>MCP Python SDK</td>
+<td>Standard tool protocol</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>SQLite (DBOS optional)</td>
+<td>Local-first, optional durability</td>
+</tr>
+</tbody></table>
+<h2 id="system-diagram">System Diagram</h2>
+<pre class="mermaid">
+flowchart TB
+    subgraph External
+        User[User/CLI]
+        LLM[LLM Providers]
+        MCP[MCP Servers]
+        Browser[Browser]
+    end
+    
+    subgraph CodePuppy
+        CLI[CLI Interface]
+        AgentMgr[Agent Manager]
+        ToolMgr[Tool Registry]
+        HookEngine[Hook Engine]
+        ModelFactory[Model Factory]
+        MCPMgr[MCP Manager]
+        API[REST API]
+    end
+    
+    subgraph Storage
+        Config[~/.code_puppy/]
+        Sessions[Session Storage]
+        Skills[Skills Cache]
+    end
+    
+    User --&gt; CLI
+    CLI --&gt; AgentMgr
+    AgentMgr --&gt; ModelFactory
+    ModelFactory --&gt; LLM
+    ToolMgr --&gt; MCP
+    ToolMgr --&gt; Browser
+    HookEngine -.-&gt; CLI
+    HookEngine -.-&gt; ToolMgr
+    API --&gt; AgentMgr
+    CLI --&gt; Config
+    AgentMgr --&gt; Sessions
+    ToolMgr --&gt; Skills
+</pre>
+<h2 id="features-at-a-glance">Features at a Glance</h2>
+<table>
+<thead><tr>
+<th>Feature</th>
+<th>Description</th>
+<th>Entry Point</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Multi-Agent System</td>
+<td>Switch between specialized AI agents</td>
+<td><code>/agent</code> command</td>
+</tr>
+<tr>
+<td>Model Management</td>
+<td>Add/configure 65+ AI providers</td>
+<td><code>/add_model</code> command</td>
+</tr>
+<tr>
+<td>Custom Agents</td>
+<td>Create JSON or Python agents</td>
+<td>Agent Creator agent</td>
+</tr>
+<tr>
+<td>Skills System</td>
+<td>Install reusable code patterns</td>
+<td><code>/skills</code> command</td>
+</tr>
+<tr>
+<td>MCP Integration</td>
+<td>Manage external tool servers</td>
+<td><code>/mcp</code> command</td>
+</tr>
+<tr>
+<td>Hook System</td>
+<td>Extend via plugin callbacks</td>
+<td><code>code_puppy/callbacks.py</code></td>
+</tr>
+<tr>
+<td>Browser Automation</td>
+<td>Control Chrome for web tasks</td>
+<td>Browser tools</td>
+</tr>
+<tr>
+<td>Scheduler</td>
+<td>Run tasks on schedule</td>
+<td><code>/scheduler</code> command</td>
+</tr>
+<tr>
+<td>REST API</td>
+<td>Programmatic access</td>
+<td><code>http://localhost:8000</code></td>
+</tr>
+<tr>
+<td>Universal Constructor</td>
+<td>Plugin-based tool registry</td>
+<td>UC plugin</td>
+</tr>
+</tbody></table>
+<h2 id="key-flows">Key Flows</h2>
+<table>
+<thead><tr>
+<th>Flow</th>
+<th>Trigger</th>
+<th>Outcome</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>User Task Execution</td>
+<td>User input in CLI</td>
+<td>Agent processes request, uses tools, returns result</td>
+</tr>
+<tr>
+<td>Agent Switching</td>
+<td><code>/agent &lt;name&gt;</code></td>
+<td>Loads new agent config, updates tools/prompts</td>
+</tr>
+<tr>
+<td>Model Addition</td>
+<td><code>/add_model</code></td>
+<td>Fetches from models.dev, validates, saves config</td>
+</tr>
+<tr>
+<td>Skill Installation</td>
+<td><code>/skills install &lt;skill&gt;</code></td>
+<td>Downloads skill, validates, caches locally</td>
+</tr>
+<tr>
+<td>MCP Server Start</td>
+<td><code>/mcp start &lt;server&gt;</code></td>
+<td>Spawns server process, monitors health</td>
+</tr>
+<tr>
+<td>Custom Command</td>
+<td><code>/custom_name</code></td>
+<td>Loads markdown prompt, executes as task</td>
+</tr>
+<tr>
+<td>Plugin Load</td>
+<td>App startup</td>
+<td>Discovers plugins, registers callbacks</td>
+</tr>
+</tbody></table>
+<h2 id="external-dependencies">External Dependencies</h2>
+<table>
+<thead><tr>
+<th>System</th>
+<th>Purpose</th>
+<th>Failure Impact</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>LLM Providers</td>
+<td>AI inference</td>
+<td>Core functionality unavailable</td>
+</tr>
+<tr>
+<td>models.dev API</td>
+<td>Model discovery</td>
+<td>Falls back to bundled database</td>
+</tr>
+<tr>
+<td>MCP Servers</td>
+<td>External tools</td>
+<td>Specific tools unavailable</td>
+</tr>
+<tr>
+<td>Browser (Chromium)</td>
+<td>Web automation</td>
+<td>Browser tools disabled</td>
+</tr>
+<tr>
+<td>DBOS (optional)</td>
+<td>Durable execution</td>
+<td>No workflow recovery</td>
+</tr>
+</tbody></table>
+<h2 id="directory-guide">Directory Guide</h2>
+<table>
+<thead><tr>
+<th>Directory</th>
+<th>Contains</th>
+<th>When to Look Here</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>code_puppy/</code></td>
+<td>Core application</td>
+<td>Most development</td>
+</tr>
+<tr>
+<td><code>code_puppy/agents/</code></td>
+<td>Built-in agents</td>
+<td>Adding new agent types</td>
+</tr>
+<tr>
+<td><code>code_puppy/tools/</code></td>
+<td>Tool implementations</td>
+<td>Adding new capabilities</td>
+</tr>
+<tr>
+<td><code>code_puppy/plugins/</code></td>
+<td>Built-in plugins</td>
+<td>Extending via hooks</td>
+</tr>
+<tr>
+<td><code>code_puppy/api/</code></td>
+<td>REST API</td>
+<td>HTTP integrations</td>
+</tr>
+<tr>
+<td><code>code_puppy/mcp_/</code></td>
+<td>MCP integration</td>
+<td>Server management</td>
+</tr>
+<tr>
+<td><code>code_puppy/messaging/</code></td>
+<td>UI rendering</td>
+<td>Terminal output</td>
+</tr>
+<tr>
+<td><code>tests/</code></td>
+<td>Test suite</td>
+<td>Understanding behavior</td>
+</tr>
+<tr>
+<td><code>~/.code_puppy/</code></td>
+<td>User config</td>
+<td>User data location</td>
+</tr>
+</tbody></table>
+<h2 id="api-surface-backend">API Surface (Backend)</h2>
+<h3 id="rest-endpoints">REST Endpoints</h3>
+<table>
+<thead><tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Purpose</th>
+<th>Auth</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>GET</td>
+<td><code>/</code></td>
+<td>Health check</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/health</code></td>
+<td>Detailed health</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/terminal</code></td>
+<td>Terminal UI</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/agents</code></td>
+<td>List agents</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/commands</code></td>
+<td>List commands</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/commands/{name}</code></td>
+<td>Get command</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>POST</td>
+<td><code>/api/commands/execute</code></td>
+<td>Execute command</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/config</code></td>
+<td>Get config</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/config/keys</code></td>
+<td>List config keys</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/config/{key}</code></td>
+<td>Get config value</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td><code>/api/config/{key}</code></td>
+<td>Set config value</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/config/{key}</code></td>
+<td>Delete config</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/sessions</code></td>
+<td>List sessions</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/sessions/{id}</code></td>
+<td>Get session</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>GET</td>
+<td><code>/api/sessions/{id}/messages</code></td>
+<td>Get messages</td>
+<td>Public</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td><code>/api/sessions/{id}</code></td>
+<td>Delete session</td>
+<td>Public</td>
+</tr>
+</tbody></table>
+<h3 id="api-conventions">API Conventions</h3>
+<ul>
+<li>Base URL: <code>http://localhost:8000</code></li>
+<li>Versioning: None (single version)</li>
+<li>Auth mechanism: None (local-only API)</li>
+<li>Error format: <code>{detail: string}</code></li>
+</ul>
+<h2 id="views-pages-frontend">Views &amp; Pages (Frontend)</h2>
+<h3 id="terminal-ui">Terminal UI</h3>
+<table>
+<thead><tr>
+<th>Component</th>
+<th>Purpose</th>
+<th>Key Features</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Main CLI</td>
+<td>Interactive shell</td>
+<td>Completions, history, keybindings</td>
+</tr>
+<tr>
+<td>Menus</td>
+<td>Selection dialogs</td>
+<td>Agent picker, model picker, etc.</td>
+</tr>
+<tr>
+<td>Terminal</td>
+<td>Output display</td>
+<td>Rich formatting, streaming</td>
+</tr>
+<tr>
+<td>Modal dialogs</td>
+<td>Forms/wizards</td>
+<td>Config wizards, installers</td>
+</tr>
+</tbody></table>
+<h3 id="web-terminal">Web Terminal</h3>
+<table>
+<thead><tr>
+<th>Route</th>
+<th>View</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>/terminal</code></td>
+<td>Terminal.html</td>
+<td>Web-based terminal access</td>
+</tr>
+</tbody></table>
+<h3 id="navigation-structure">Navigation Structure</h3>
+<pre class="mermaid">
+flowchart TD
+    Start[CLI Start] --&gt; Onboard{First Time?}
+    Onboard --&gt;|Yes| Wizard[Onboarding Wizard]
+    Onboard --&gt;|No| Main[Main CLI]
+    Main --&gt; Slash{Command?}
+    Slash --&gt;|/agent| AgentMenu[Agent Picker]
+    Slash --&gt;|/model| ModelMenu[Model Picker]
+    Slash --&gt;|/mcp| MCPMenu[MCP Manager]
+    Slash --&gt;|/skills| SkillsMenu[Skills Manager]
+    Slash --&gt;|/add_model| AddModel[Model Installer]
+    Slash --&gt;|Other| Custom[Custom Command]
+    Slash --&gt;|None| Agent[Run Agent]
+</pre>
+<h2 id="shared-layouts">Shared Layouts</h2>
+<table>
+<thead><tr>
+<th>Layout</th>
+<th>Used By</th>
+<th>Contains</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>MainCLI</td>
+<td>All terminal sessions</td>
+<td>Input, history, completions</td>
+</tr>
+<tr>
+<td>ModalDialog</td>
+<td>Wizards, forms</td>
+<td>Title, content, actions</td>
+</tr>
+<tr>
+<td>MenuPicker</td>
+<td>Selection dialogs</td>
+<td>List, filter, select</td>
+</tr>
+</tbody></table>
+<h2 id="plugin-architecture">Plugin Architecture</h2>
+<p>Code Puppy uses a callback-based plugin system:</p>
+<pre class="mermaid">
+sequenceDiagram
+    participant User
+    participant Core
+    participant HookEngine
+    participant Plugins
+    
+    User-&gt;&gt;Core: Action (e.g., tool call)
+    Core-&gt;&gt;HookEngine: Trigger hook
+    HookEngine-&gt;&gt;Plugins: Call registered callbacks
+    Plugins--&gt;&gt;HookEngine: Results
+    HookEngine--&gt;&gt;Core: Aggregated result
+    Core--&gt;&gt;User: Final response
+</pre>
+<h3 id="available-hooks">Available Hooks</h3>
+<table>
+<thead><tr>
+<th>Hook</th>
+<th>When</th>
+<th>Use Case</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>startup</code></td>
+<td>App boot</td>
+<td>Initialize plugins</td>
+</tr>
+<tr>
+<td><code>shutdown</code></td>
+<td>Exit</td>
+<td>Cleanup resources</td>
+</tr>
+<tr>
+<td><code>invoke_agent</code></td>
+<td>Agent starts</td>
+<td>Pre-processing</td>
+</tr>
+<tr>
+<td><code>agent_run_start/end</code></td>
+<td>Agent lifecycle</td>
+<td>Monitoring, workflows</td>
+</tr>
+<tr>
+<td><code>pre_tool_call/post_tool_call</code></td>
+<td>Tool execution</td>
+<td>Logging, validation</td>
+</tr>
+<tr>
+<td><code>run_shell_command</code></td>
+<td>Shell exec</td>
+<td>Safety checks</td>
+</tr>
+<tr>
+<td><code>file_permission</code></td>
+<td>File ops</td>
+<td>Access control</td>
+</tr>
+<tr>
+<td><code>custom_command</code></td>
+<td>Unknown slash cmd</td>
+<td>Custom handlers</td>
+</tr>
+<tr>
+<td><code>register_tools</code></td>
+<td>Tool registration</td>
+<td>Plugin tools</td>
+</tr>
+<tr>
+<td><code>register_agents</code></td>
+<td>Agent discovery</td>
+<td>Plugin agents</td>
+</tr>
+</tbody></table>
+<p>See <code>code_puppy/callbacks.py</code> for full hook list.</p>
+<h2 id="model-support">Model Support</h2>
+<p>Code Puppy supports models from 65+ providers:</p>
+<table>
+<thead><tr>
+<th>Provider</th>
+<th>Models</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>OpenAI</td>
+<td>GPT-4, o1, o3</td>
+<td>Tool calling required</td>
+</tr>
+<tr>
+<td>Anthropic</td>
+<td>Claude 3.5/3.7</td>
+<td>Extended thinking support</td>
+</tr>
+<tr>
+<td>Google</td>
+<td>Gemini 2.0</td>
+<td>Fast, cost-effective</td>
+</tr>
+<tr>
+<td>Cerebras</td>
+<td>Llama, Qwen</td>
+<td>Ultra-fast inference</td>
+</tr>
+<tr>
+<td>Groq</td>
+<td>Llama, Mixtral</td>
+<td>Real-time speeds</td>
+</tr>
+<tr>
+<td>Ollama</td>
+<td>Local models</td>
+<td>Privacy-first</td>
+</tr>
+<tr>
+<td>models.dev</td>
+<td>65+ providers</td>
+<td>Dynamic discovery</td>
+</tr>
+</tbody></table>
+<h2 id="configuration">Configuration</h2>
+<table>
+<thead><tr>
+<th>File</th>
+<th>Purpose</th>
+<th>Location</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>models.json</code></td>
+<td>Built-in models</td>
+<td>Package</td>
+</tr>
+<tr>
+<td><code>extra_models.json</code></td>
+<td>User models</td>
+<td><code>~/.code_puppy/</code></td>
+</tr>
+<tr>
+<td><code>config.json</code></td>
+<td>User settings</td>
+<td><code>~/.code_puppy/</code></td>
+</tr>
+<tr>
+<td><code>agents/*.json</code></td>
+<td>Custom agents</td>
+<td><code>~/.code_puppy/agents/</code></td>
+</tr>
+<tr>
+<td><code>plugins/*/</code></td>
+<td>Plugin configs</td>
+<td><code>~/.code_puppy/plugins/</code></td>
+</tr>
+</tbody></table>
+<h2 id="testing-strategy">Testing Strategy</h2>
+<table>
+<thead><tr>
+<th>Type</th>
+<th>Location</th>
+<th>Coverage</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Unit</td>
+<td><code>tests/</code></td>
+<td>80%+</td>
+</tr>
+<tr>
+<td>Integration</td>
+<td><code>tests/integration/</code></td>
+<td>Key flows</td>
+</tr>
+<tr>
+<td>Plugin</td>
+<td><code>tests/plugins/</code></td>
+<td>Plugin system</td>
+</tr>
+<tr>
+<td>MCP</td>
+<td><code>tests/mcp/</code></td>
+<td>Server management</td>
+</tr>
+</tbody></table>
+<h2 id="security-model">Security Model</h2>
+<ul>
+<li><strong>Local-first</strong>: All data stays on user machine</li>
+<li><strong>No telemetry</strong>: Zero analytics or data collection</li>
+<li><strong>API keys</strong>: Stored in environment variables</li>
+<li><strong>File permissions</strong>: Optional permission checks via hooks</li>
+<li><strong>Shell safety</strong>: Command validation and blocking hooks</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>

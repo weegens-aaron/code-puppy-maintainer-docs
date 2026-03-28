@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Endpoint: POST /api/commands/autocomplete — Code Puppy Internals</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+</head>
+<body>
+<aside class="sidebar">
+<div class="sidebar-title">Code Puppy Internals</div>
+<nav>
+<div class="nav-section">Overview</div>
+<a href="../Architecture.html">Architecture</a>
+<a href="../Troubleshooting.html">Troubleshooting</a>
+<a href="../index.html">index</a>
+<div class="nav-section">Concepts</div>
+<a href="../Concepts/AgentArchitecture.html">Agent Architecture</a>
+<a href="../Concepts/CallbackSystem.html">Callback System</a>
+<a href="../Concepts/ConfigurationManagement.html">Configuration Management</a>
+<a href="../Concepts/ErrorHandlingStrategy.html">Error Handling Strategy</a>
+<a href="../Concepts/MCPIntegration.html">MCPIntegration</a>
+<a href="../Concepts/ToolRegistration.html">Tool Registration</a>
+<a href="../Concepts/index.html">index</a>
+<div class="nav-section">Endpoints</div>
+<a href="CommandAutocomplete.html" class="active">Command Autocomplete</a>
+<a href="DeleteConfigKey.html">Delete Config Key</a>
+<a href="DeleteSession.html">Delete Session</a>
+<a href="ExecuteCommand.html">Execute Command</a>
+<a href="GetCommand.html">Get Command</a>
+<a href="GetConfig.html">Get Config</a>
+<a href="GetConfigKey.html">Get Config Key</a>
+<a href="GetSession.html">Get Session</a>
+<a href="GetSessionMessages.html">Get Session Messages</a>
+<a href="ListAgents.html">List Agents</a>
+<a href="ListCommands.html">List Commands</a>
+<a href="ListConfigKeys.html">List Config Keys</a>
+<a href="ListSessions.html">List Sessions</a>
+<a href="SetConfigKey.html">Set Config Key</a>
+<a href="index.html">index</a>
+<div class="nav-section">Features</div>
+<a href="../Features/AgentCreation.html">Agent Creation</a>
+<a href="../Features/AgentSwitching.html">Agent Switching</a>
+<a href="../Features/BrowserControl.html">Browser Control</a>
+<a href="../Features/CustomSkills.html">Custom Skills</a>
+<a href="../Features/HookSystem.html">Hook System</a>
+<a href="../Features/JSONAgents.html">JSONAgents</a>
+<a href="../Features/MCPManagement.html">MCPManagement</a>
+<a href="../Features/MPCCatalog.html">MPCCatalog</a>
+<a href="../Features/ModelConfiguration.html">Model Configuration</a>
+<a href="../Features/ModelDiscovery.html">Model Discovery</a>
+<a href="../Features/PluginDevelopment.html">Plugin Development</a>
+<a href="../Features/PythonAgents.html">Python Agents</a>
+<a href="../Features/RoundRobinModels.html">Round Robin Models</a>
+<a href="../Features/SkillInstallation.html">Skill Installation</a>
+<a href="../Features/SkillUsage.html">Skill Usage</a>
+<a href="../Features/TaskScheduling.html">Task Scheduling</a>
+<a href="../Features/TerminalIntegration.html">Terminal Integration</a>
+<a href="../Features/UniversalConstructor.html">Universal Constructor</a>
+<a href="../Features/index.html">index</a>
+<div class="nav-section">Flows</div>
+<a href="../Flows/AddingAModel.html">Adding AModel</a>
+<a href="../Flows/AgentExecution.html">Agent Execution</a>
+<a href="../Flows/FirstTimeSetup.html">First Time Setup</a>
+<a href="../Flows/InstallingASkill.html">Installing ASkill</a>
+<a href="../Flows/MessageHistoryProcessing.html">Message History Processing</a>
+<a href="../Flows/PluginLoading.html">Plugin Loading</a>
+<a href="../Flows/RunningATask.html">Running ATask</a>
+<a href="../Flows/StreamEventProcessing.html">Stream Event Processing</a>
+<a href="../Flows/ToolCallExecution.html">Tool Call Execution</a>
+<a href="../Flows/index.html">index</a>
+<div class="nav-section">Views</div>
+<a href="../Views/AgentPicker.html">Agent Picker</a>
+<a href="../Views/DiffMenu.html">Diff Menu</a>
+<a href="../Views/MCPManager.html">MCPManager</a>
+<a href="../Views/MainCLI.html">Main CLI</a>
+<a href="../Views/ModelPicker.html">Model Picker</a>
+<a href="../Views/ModelSettingsMenu.html">Model Settings Menu</a>
+<a href="../Views/OnboardingWizard.html">Onboarding Wizard</a>
+<a href="../Views/SkillsMenu.html">Skills Menu</a>
+<a href="../Views/TerminalWebInterface.html">Terminal Web Interface</a>
+<a href="../Views/index.html">index</a>
+</nav>
+</aside>
+<main class="content">
+<h1 id="endpoint-post-api-commands-autocomplete">Endpoint: POST /api/commands/autocomplete</h1>
+<h2 id="overview">Overview</h2>
+<table>
+<thead><tr>
+<th>Property</th>
+<th>Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Method</td>
+<td><code>POST</code></td>
+</tr>
+<tr>
+<td>Path</td>
+<td><code>/api/commands/autocomplete</code></td>
+</tr>
+<tr>
+<td>Auth</td>
+<td><code>public</code></td>
+</tr>
+<tr>
+<td>Rate Limit</td>
+<td><code>N/A</code></td>
+</tr>
+</tbody></table>
+<h2 id="what-does-this-do">What Does This Do?</h2>
+<p>Provides intelligent autocomplete suggestions for slash commands as the user types. This endpoint powers the autocomplete functionality in the CLI, helping users discover available commands and their usage patterns.</p>
+<h2 id="request">Request</h2>
+<h3 id="headers">Headers</h3>
+<table>
+<thead><tr>
+<th>Header</th>
+<th>Required</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Content-Type</td>
+<td>yes</td>
+<td><code>application/json</code></td>
+</tr>
+</tbody></table>
+<h3 id="request-body">Request Body</h3>
+<pre><code class="language-json">{
+  "partial": "string"  // Partial command string, e.g., "/se" or "/set mo"
+}</code></pre>
+<h3 id="example-requests">Example Requests</h3>
+<pre><code class="language-json">// Empty input - get all commands
+{
+  "partial": ""
+}
+
+// Partial command name
+{
+  "partial": "/se"
+}
+
+// Complete command with args
+{
+  "partial": "/set mo"
+}</code></pre>
+<h2 id="response">Response</h2>
+<h3 id="success-response-200">Success Response (200)</h3>
+<pre><code class="language-json">{
+  "suggestions": [
+    "/set",
+    "/set_model",
+    "/session"
+  ]
+}</code></pre>
+<h3 id="response-fields">Response Fields</h3>
+<table>
+<thead><tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>suggestions</code></td>
+<td>string[]</td>
+<td>List of autocomplete suggestions</td>
+</tr>
+</tbody></table>
+<h2 id="behavior-rules">Behavior Rules</h2>
+<h3 id="empty-input">Empty Input</h3>
+<p>When <code>partial</code> is empty or only whitespace:</p>
+<ul>
+<li>Returns <strong>all available command names</strong> with leading <code>/</code></li>
+<li>Sorted alphabetically</li>
+</ul>
+<h3 id="partial-command-name-no-space">Partial Command Name (No Space)</h3>
+<p>When input is just a partial command name like <code>/se</code>:</p>
+<ul>
+<li>Returns <strong>matching command names</strong> and <strong>aliases</strong></li>
+<li>Case-insensitive matching</li>
+<li>Includes both primary names and aliases</li>
+</ul>
+<h3 id="complete-command-with-args">Complete Command with Args</h3>
+<p>When input includes a complete command name plus arguments like <code>/set mo</code>:</p>
+<ul>
+<li>Returns <strong>usage hint</strong> as a single suggestion</li>
+<li>Shows the expected argument format</li>
+</ul>
+<h3 id="unknown-command">Unknown Command</h3>
+<p>When the command name doesn't exist:</p>
+<ul>
+<li>Returns <strong>empty suggestions</strong> array</li>
+</ul>
+<h2 id="implementation-map">Implementation Map</h2>
+<table>
+<thead><tr>
+<th>Layer</th>
+<th>Location</th>
+<th>Notes</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Route definition</td>
+<td><code>code_puppy/api/routers/commands.py:165</code></td>
+<td>FastAPI router</td>
+</tr>
+<tr>
+<td>Handler</td>
+<td><code>code_puppy/api/routers/commands.py:167-204</code></td>
+<td><code>autocomplete_command()</code></td>
+</tr>
+<tr>
+<td>Command registry</td>
+<td><code>code_puppy/command_line/command_registry.py</code></td>
+<td><code>get_command()</code>, <code>get_unique_commands()</code></td>
+</tr>
+</tbody></table>
+<h2 id="flow">Flow</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant Client
+    participant API
+    participant Registry
+    
+    Client-&gt;&gt;API: POST /api/commands/autocomplete
+    API-&gt;&gt;API: Strip leading /
+    alt Empty input
+        API-&gt;&gt;Registry: get_unique_commands()
+        Registry--&gt;&gt;API: All commands
+        API-&gt;&gt;API: Format with /
+        API--&gt;&gt;Client: All command names
+    else Partial command name (no space)
+        API-&gt;&gt;Registry: get_unique_commands()
+        Registry--&gt;&gt;API: All commands
+        API-&gt;&gt;API: Filter by prefix
+        API-&gt;&gt;Registry: Check aliases
+        Registry--&gt;&gt;API: Matched aliases
+        API--&gt;&gt;Client: Matching commands + aliases
+    else Complete command with args
+        API-&gt;&gt;Registry: get_command(cmd_name)
+        alt Command found
+            Registry--&gt;&gt;API: Command object
+            API-&gt;&gt;API: Extract usage
+            API--&gt;&gt;Client: Usage hint
+        else Command not found
+            API--&gt;&gt;Client: Empty suggestions
+        end
+    end
+</pre>
+<h2 id="examples">Examples</h2>
+<h3 id="example-1-get-all-commands">Example 1: Get All Commands</h3>
+<pre><code class="language-bash">curl -X POST 'http://localhost:8000/api/commands/autocomplete' \
+  -H 'Content-Type: application/json' \
+  -d '{"partial": ""}'</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{
+  "suggestions": [
+    "/add_model",
+    "/agent",
+    "/autosave",
+    "/colors",
+    "/commands",
+    "/config",
+    "/diff",
+    "/help",
+    "/hook",
+    "/mcp",
+    "/model",
+    "/pin",
+    "/quit",
+    "/reset",
+    "/schedule",
+    "/session",
+    "/set",
+    "/skills",
+    "/uc"
+  ]
+}</code></pre>
+<h3 id="example-2-partial-command-match">Example 2: Partial Command Match</h3>
+<pre><code class="language-bash">curl -X POST 'http://localhost:8000/api/commands/autocomplete' \
+  -H 'Content-Type: application/json' \
+  -d '{"partial": "/se"}'</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{
+  "suggestions": [
+    "/session",
+    "/set",
+    "/skills"
+  ]
+}</code></pre>
+<h3 id="example-3-complete-command-with-args">Example 3: Complete Command with Args</h3>
+<pre><code class="language-bash">curl -X POST 'http://localhost:8000/api/commands/autocomplete' \
+  -H 'Content-Type: application/json' \
+  -d '{"partial": "/set model="}'</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code class="language-json">{
+  "suggestions": [
+    "/set &lt;key&gt;=&lt;value&gt;  # Set a configuration value"
+  ]
+}</code></pre>
+<h2 id="edge-cases-gotchas">Edge Cases &amp; Gotchas</h2>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Case-insensitive matching</strong>: Command names and aliases are matched case-insensitively, but suggestions are returned in their canonical form.</p>
+</div>
+<div class="callout callout-note">
+<div class="callout-title">NOTE</div>
+<p><strong>Alias inclusion</strong>: Both primary command names and aliases are included in suggestions, so <code>/config</code> and <code>/cfg</code> might both appear.</p>
+</div>
+<h2 id="error-scenarios">Error Scenarios</h2>
+<table>
+<thead><tr>
+<th>Scenario</th>
+<th>Behavior</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>Invalid JSON</td>
+<td>FastAPI returns 422 validation error</td>
+</tr>
+<tr>
+<td>Missing <code>partial</code> field</td>
+<td>FastAPI returns 422 validation error</td>
+</tr>
+</tbody></table>
+<h2 id="testing-this-endpoint">Testing This Endpoint</h2>
+<h3 id="manual-test">Manual Test</h3>
+<pre><code class="language-bash"># Test all commands
+curl -X POST 'http://localhost:8000/api/commands/autocomplete' \
+  -H 'Content-Type: application/json' \
+  -d '{"partial": ""}' | jq
+
+# Test partial match
+curl -X POST 'http://localhost:8000/api/commands/autocomplete' \
+  -H 'Content-Type: application/json' \
+  -d '{"partial": "/ag"}' | jq
+
+# Test complete command
+curl -X POST 'http://localhost:8000/api/commands/autocomplete' \
+  -H 'Content-Type: application/json' \
+  -d '{"partial": "/set model="}' | jq</code></pre>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="ListCommands.html">Endpoint: GET /api/commands</a> - List all commands</li>
+<li><a href="GetCommand.html">Endpoint: GET /api/commands/{name}</a> - Get specific command info</li>
+<li><a href="ExecuteCommand.html">Endpoint: POST /api/commands/execute</a> - Execute a command</li>
+<li><a href="../Features/PluginDevelopment.html">Feature: Plugin Development</a> - How to add custom commands via hooks</li>
+</ul>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+</body>
+</html>
